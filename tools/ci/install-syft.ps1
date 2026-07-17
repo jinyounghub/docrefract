@@ -51,7 +51,10 @@ if ($actualSha256 -cne $ExpectedSha256) {
 }
 
 New-Item -ItemType Directory -Path $destination | Out-Null
-$tar = (Get-Command tar -CommandType Application -ErrorAction Stop).Source
+$tar = (
+    Get-Command tar -CommandType Application -ErrorAction Stop |
+        Select-Object -First 1
+).Source
 & $tar -xzf $archive -C $destination syft
 if ($LASTEXITCODE -ne 0) {
     throw "Extracting Syft failed with exit code $LASTEXITCODE."
