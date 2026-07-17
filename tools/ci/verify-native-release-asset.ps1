@@ -355,4 +355,5 @@ foreach ($expected in $runtimePackages) {
     }
 }
 
+$global:LASTEXITCODE = 0
 Write-Host "Verified native archive, RID dependency graph, and SBOM for $archiveName."

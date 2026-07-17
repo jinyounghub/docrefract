@@ -214,4 +214,19 @@ foreach ($needle in @(
     }
 }
 
+foreach ($script in @(
+    "tools/ci/build-native-distribution.ps1",
+    "tools/ci/verify-native-release-asset.ps1"
+)) {
+    $scriptContent = Read-RepositoryText -RelativePath $script
+    if (
+        $scriptContent.IndexOf(
+            '$global:LASTEXITCODE = 0',
+            [StringComparison]::Ordinal
+        ) -lt 0
+    ) {
+        throw "$script must clear expected native smoke exit codes before returning."
+    }
+}
+
 Write-Host "Versioned package, NuGet install, native assets, Action, demo, report, documentation, issue metadata, and SDK pin are synchronized at $version."

@@ -555,5 +555,6 @@ finally {
     }
 }
 
+$global:LASTEXITCODE = 0
 Write-Host "Built, determinism-checked, clean-extracted, and smoked $archiveName."
 Write-Output $archive
