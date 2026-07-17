@@ -1,4 +1,3 @@
-using System.Reflection;
 using DocRefract.Core;
 using DocRefract.Core.Reporting;
 
@@ -83,25 +82,7 @@ internal static class CliApplication
         }
     }
 
-    private static string GetVersion()
-    {
-        var informationalVersion = typeof(CliApplication).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
-
-        if (!string.IsNullOrWhiteSpace(informationalVersion))
-        {
-            var metadataSeparator = informationalVersion.IndexOf('+', StringComparison.Ordinal);
-            return metadataSeparator < 0
-                ? informationalVersion
-                : informationalVersion[..metadataSeparator];
-        }
-
-        var version = typeof(CliApplication).Assembly.GetName().Version;
-        return version is null
-            ? "unknown"
-            : $"{version.Major}.{version.Minor}.{version.Build}";
-    }
+    private static string GetVersion() => DocRefractVersion.Current;
 
     private const string HelpText =
         """

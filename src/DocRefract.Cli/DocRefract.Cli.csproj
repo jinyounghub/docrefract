@@ -15,7 +15,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>docrefract</ToolCommandName>
     <PackageId>DocRefract.Tool</PackageId>
-    <Version>0.1.0</Version>
+
     <Authors>DocRefract contributors</Authors>
     <Description>Deterministic semantic regression testing for PDF and DOCX documents.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>

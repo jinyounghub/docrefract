@@ -19,8 +19,8 @@ $workDirectoryPath = [IO.Path]::GetFullPath($WorkDirectory)
 New-Item -ItemType Directory -Force -Path $workDirectoryPath | Out-Null
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    [xml]$project = Get-Content (Join-Path $repositoryRoot "src/DocRefract.Cli/DocRefract.Cli.csproj")
-    $Version = [string]$project.Project.PropertyGroup.Version
+    [xml]$build = Get-Content (Join-Path $repositoryRoot "Directory.Build.props")
+    $Version = [string]$build.Project.PropertyGroup.Version
 }
 
 $toolPath = Join-Path $workDirectoryPath "tool"
@@ -50,6 +50,16 @@ $commandName = if ($env:OS -eq "Windows_NT") { "docrefract.exe" } else { "docref
 $command = Join-Path $toolPath $commandName
 $fixtures = Join-Path $repositoryRoot "tests/DocRefract.Tests/Fixtures"
 
+$versionOutput = & $command --version
+$versionExitCode = $LASTEXITCODE
+$reportedVersion = ($versionOutput -join "`n").Trim()
+if ($versionExitCode -ne 0) {
+    throw "docrefract --version returned $versionExitCode."
+}
+if ($reportedVersion -ne $Version) {
+    throw "docrefract --version reported $reportedVersion; expected $Version."
+}
+
 function Invoke-ExpectedExit {
     param(
         [int]$Expected,
@@ -64,12 +74,19 @@ function Invoke-ExpectedExit {
     }
 }
 
+$noChangeDirectory = Join-Path $workDirectoryPath "no-change"
 Invoke-ExpectedExit 0 "no-change comparison" @(
     (Join-Path $fixtures "docx_metadata_before.docx"),
     (Join-Path $fixtures "docx_metadata_after.docx"),
-    "--out", (Join-Path $workDirectoryPath "no-change"),
+    "--out", $noChangeDirectory,
     "--quiet"
 )
+
+$report = Get-Content (Join-Path $noChangeDirectory "diff.json") -Raw -Encoding UTF8 |
+    ConvertFrom-Json
+if ([string]$report.engine.toolVersion -ne $Version) {
+    throw "diff.json reported tool version $($report.engine.toolVersion); expected $Version."
+}
 
 Invoke-ExpectedExit 0 "allowed format comparison" @(
     (Join-Path $fixtures "docx_style_before.docx"),
@@ -93,5 +110,5 @@ Invoke-ExpectedExit 2 "missing-input comparison" @(
     "--quiet"
 )
 
-Write-Host "Installed-tool smoke contract passed (exit codes 0, 1, and 2)."
+Write-Host "Installed-tool smoke contract passed for $Version (version, report metadata, and exit codes 0, 1, and 2)."
 exit 0

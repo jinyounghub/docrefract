@@ -66,25 +66,53 @@ dotnet run --project src/DocRefract.Cli -- \
 Open `artifacts/report/index.html` in a browser, or consume
 `artifacts/report/diff.json` from another tool.
 
-### Install as a .NET tool
+### Install from GitHub Releases
 
-After the first package is published:
+Prerequisite: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+The installable package is attached to every GitHub Release. With the
+[GitHub CLI](https://cli.github.com/):
 
 ```console
-dotnet tool install --global DocRefract.Tool --version 0.1.0
-docrefract before.pdf after.pdf --out report
+gh release download v0.1.1 --repo jinyounghub/docrefract --pattern "DocRefract.Tool.0.1.1.nupkg" --dir .docrefract-packages
+dotnet tool install --global DocRefract.Tool --version 0.1.1 --source .docrefract-packages
+docrefract --version
 ```
 
-Every version tag publishes the `.nupkg` on GitHub Releases. Publishing the same
-package to NuGet.org is optional and occurs only when the maintainer configures
-the `NUGET_API_KEY` repository secret.
+Alternatively, download
+[`DocRefract.Tool.0.1.1.nupkg`](https://github.com/jinyounghub/docrefract/releases/download/v0.1.1/DocRefract.Tool.0.1.1.nupkg)
+in a browser and pass its containing directory to `--source`. NuGet.org
+publishing is not enabled yet, so the GitHub Release package is the canonical
+binary for this version.
+
+If an older DocRefract version is already installed, update from the same local
+package directory:
+
+```console
+dotnet tool update --global DocRefract.Tool --version 0.1.1 --source .docrefract-packages
+```
+
+Open a new terminal if `docrefract` is not yet on `PATH`.
+
+### Verify release assets
+
+Download all four assets before checking the manifest; `SHA256SUMS` covers the
+`.nupkg`, packaged-payload SBOM, and third-party notices:
+
+```console
+gh release download v0.1.1 --repo jinyounghub/docrefract --dir .docrefract-release
+cd .docrefract-release
+sha256sum --check SHA256SUMS
+```
+
+On macOS, use `shasum -a 256 --check SHA256SUMS`. In PowerShell, compare each
+manifest hash with `Get-FileHash -Algorithm SHA256`.
 
 To test a package built from the repository:
 
 ```console
 dotnet pack src/DocRefract.Cli -c Release -o artifacts/packages
 dotnet tool install --global DocRefract.Tool \
-  --add-source artifacts/packages --version 0.1.0
+  --source artifacts/packages --version 0.1.1
 ```
 
 ## CLI contract
@@ -142,11 +170,19 @@ jobs:
   compare:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: 10.0.x
-      - run: dotnet tool install --global DocRefract.Tool --version 0.1.0
+      - name: Install DocRefract 0.1.1
+        run: |
+          mkdir -p "$RUNNER_TEMP/docrefract-packages"
+          curl --fail --location --retry 3 \
+            --output "$RUNNER_TEMP/docrefract-packages/DocRefract.Tool.0.1.1.nupkg" \
+            https://github.com/jinyounghub/docrefract/releases/download/v0.1.1/DocRefract.Tool.0.1.1.nupkg
+          dotnet tool install --global DocRefract.Tool \
+            --version 0.1.1 \
+            --source "$RUNNER_TEMP/docrefract-packages"
       - name: Compare generated document
         run: >
           docrefract test/baseline.pdf build/report.pdf
@@ -154,7 +190,7 @@ jobs:
           --fail-on content,layout,media
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docrefract-report
           path: artifacts/docrefract
