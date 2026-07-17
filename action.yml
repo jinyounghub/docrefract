@@ -1,0 +1,125 @@
+name: DocRefract
+description: Compare PDF or DOCX files and upload a deterministic semantic diff report.
+author: DocRefract contributors
+
+branding:
+  icon: file-text
+  color: purple
+
+inputs:
+  before:
+    description: Baseline PDF or DOCX path, absolute or relative to the workspace.
+    required: true
+  after:
+    description: Candidate PDF or DOCX path, absolute or relative to the workspace.
+    required: true
+  fail-on:
+    description: Comma-separated prohibited categories, or "any".
+    required: false
+    default: any
+  out:
+    description: Report directory, absolute or relative to the workspace.
+    required: false
+    default: docrefract-report
+  version:
+    description: DocRefract tool version. Override this when testing an unreleased package.
+    required: false
+    default: 0.2.0
+  source:
+    description: HTTPS release nupkg URL, HTTPS NuGet feed, local nupkg, or local package directory. "{version}" is replaced with the version input.
+    required: false
+    default: https://github.com/jinyounghub/docrefract/releases/download/v{version}/DocRefract.Tool.{version}.nupkg
+  sha256:
+    description: Expected SHA-256 for a non-official remote nupkg; optional for official releases and local nupkgs.
+    required: false
+    default: ""
+  artifact-name:
+    description: Name of the uploaded report artifact.
+    required: false
+    default: docrefract-report
+
+outputs:
+  exit-code:
+    description: DocRefract exit code (0 pass, 1 policy failure, 2 usage/input/processing error).
+    value: ${{ steps.compare.outputs.exit-code }}
+  report-path:
+    description: Absolute path to the report directory.
+    value: ${{ steps.compare.outputs.report-path }}
+  json-path:
+    description: Absolute path to diff.json, or action-error.json when comparison could not run.
+    value: ${{ steps.compare.outputs.json-path }}
+  html-path:
+    description: Absolute path to the self-contained HTML report.
+    value: ${{ steps.compare.outputs.html-path }}
+  artifact-name:
+    description: Validated artifact name used for the upload.
+    value: ${{ steps.compare.outputs.artifact-name }}
+  artifact-id:
+    description: GitHub artifact ID for the uploaded report.
+    value: ${{ steps.upload.outputs.artifact-id }}
+  artifact-url:
+    description: URL for the uploaded report artifact.
+    value: ${{ steps.upload.outputs.artifact-url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up .NET
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      with:
+        dotnet-version: 10.0.302
+
+    - name: Install and compare
+      id: compare
+      shell: pwsh
+      env:
+        DOCREFRACT_BEFORE: ${{ inputs.before }}
+        DOCREFRACT_AFTER: ${{ inputs.after }}
+        DOCREFRACT_FAIL_ON: ${{ inputs.fail-on }}
+        DOCREFRACT_OUT: ${{ inputs.out }}
+        DOCREFRACT_VERSION: ${{ inputs.version }}
+        DOCREFRACT_SOURCE: ${{ inputs.source }}
+        DOCREFRACT_SHA256: ${{ inputs.sha256 }}
+        DOCREFRACT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+      run: |
+        & "$env:GITHUB_ACTION_PATH/tools/action/run.ps1" `
+          -Before $env:DOCREFRACT_BEFORE `
+          -After $env:DOCREFRACT_AFTER `
+          -FailOn $env:DOCREFRACT_FAIL_ON `
+          -Out $env:DOCREFRACT_OUT `
+          -Version $env:DOCREFRACT_VERSION `
+          -Source $env:DOCREFRACT_SOURCE `
+          -Sha256 $env:DOCREFRACT_SHA256 `
+          -ArtifactName $env:DOCREFRACT_ARTIFACT_NAME
+
+    - name: Upload DocRefract report
+      id: upload
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ steps.compare.outputs.artifact-name }}
+        path: |
+          ${{ steps.compare.outputs.json-path }}
+          ${{ steps.compare.outputs.html-path }}
+        if-no-files-found: error
+
+    - name: Preserve DocRefract exit code
+      if: always()
+      shell: pwsh
+      env:
+        DOCREFRACT_EXIT_CODE: ${{ steps.compare.outputs.exit-code }}
+      run: |
+        $exitCode = 2
+        if (-not [int]::TryParse(
+          $env:DOCREFRACT_EXIT_CODE,
+          [Globalization.NumberStyles]::Integer,
+          [Globalization.CultureInfo]::InvariantCulture,
+          [ref]$exitCode)) {
+          Write-Error "DocRefract did not produce a valid exit code."
+          exit 2
+        }
+
+        if ($exitCode -ne 0) {
+          Write-Host "DocRefract completed with exit code $exitCode."
+          exit $exitCode
+        }

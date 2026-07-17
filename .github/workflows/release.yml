@@ -7,18 +7,24 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
   DOTNET_NOLOGO: "1"
 
 jobs:
-  prepare:
-    name: Build and verify release bundle
-    runs-on: ubuntu-latest
+  package:
+    name: Build and verify tool package
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
+      commit: ${{ steps.version.outputs.commit }}
+      created: ${{ steps.version.outputs.created }}
 
     steps:
       - name: Check out source
@@ -30,15 +36,17 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 10.0.302
           cache: true
-          cache-dependency-path: "**/packages.lock.json"
+          cache-dependency-path: |
+            **/packages.lock.json
+            eng/native-locks/*.lock.json
 
       - name: Verify versioned metadata
         shell: pwsh
         run: ./tools/ci/verify-version-sync.ps1
 
-      - name: Validate tag version
+      - name: Validate tag, version, and commit
         id: version
         shell: pwsh
         run: |
@@ -48,21 +56,36 @@ jobs:
           if ($version -ne $projectVersion) {
             throw "Tag $env:GITHUB_REF_NAME does not match project version $projectVersion."
           }
+          $commit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $commit -notmatch "^[0-9a-f]{40}$") {
+            throw "Resolving the tagged commit failed."
+          }
+          $commitDateText = (git show -s --format=%cI HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) {
+            throw "Resolving the tagged commit time failed."
+          }
+          $commitDate = [DateTimeOffset]::Parse(
+            $commitDateText,
+            [Globalization.CultureInfo]::InvariantCulture
+          )
+          $created = $commitDate.ToUniversalTime().ToString(
+            "yyyy-MM-ddTHH:mm:ssZ",
+            [Globalization.CultureInfo]::InvariantCulture
+          )
           "version=$version" >> $env:GITHUB_OUTPUT
+          "commit=$commit" >> $env:GITHUB_OUTPUT
+          "created=$created" >> $env:GITHUB_OUTPUT
 
-      - name: Require the current main tip
+      - name: Require a commit on main
         shell: pwsh
         run: |
           git fetch --no-tags origin main
           if ($LASTEXITCODE -ne 0) {
             throw "Fetching origin/main failed with exit code $LASTEXITCODE."
           }
-          $mainCommit = (git rev-parse origin/main).Trim()
+          git merge-base --is-ancestor "${{ steps.version.outputs.commit }}" origin/main
           if ($LASTEXITCODE -ne 0) {
-            throw "Resolving origin/main failed with exit code $LASTEXITCODE."
-          }
-          if ($env:GITHUB_SHA -ne $mainCommit) {
-            throw "Release tags must point to the current main tip $mainCommit."
+            throw "Release tags must point to a commit reachable from main."
           }
 
       - name: Restore
@@ -74,19 +97,26 @@ jobs:
       - name: Test
         run: dotnet test DocRefract.slnx --configuration Release --no-build
 
-      - name: Pack
+      - name: Pack once
         run: >
           dotnet pack src/DocRefract.Cli/DocRefract.Cli.csproj
           --configuration Release
           --no-build
-          --output artifacts
+          --output artifacts/package
           -p:PackageVersion=${{ steps.version.outputs.version }}
+          -p:RepositoryCommit=${{ steps.version.outputs.commit }}
+
+      - name: Normalize reproducible NuGet package
+        shell: pwsh
+        run: >
+          ./tools/ci/normalize-nupkg.ps1
+          -PackagePath artifacts/package/DocRefract.Tool.${{ steps.version.outputs.version }}.nupkg
 
       - name: Smoke installed tool contract
         shell: pwsh
         run: >
           ./tools/ci/smoke-tool.ps1
-          -PackageDirectory artifacts
+          -PackageDirectory artifacts/package
           -WorkDirectory artifacts/tool-smoke
           -Version ${{ steps.version.outputs.version }}
 
@@ -95,7 +125,7 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.version }}"
-          $packages = @(Get-ChildItem artifacts -Filter *.nupkg -File)
+          $packages = @(Get-ChildItem artifacts/package -Filter *.nupkg -File)
           if ($packages.Count -ne 1) {
             throw "Expected one release package, found $($packages.Count)."
           }
@@ -122,227 +152,664 @@ jobs:
           ./tools/ci/build-sbom.ps1 `
             -SyftPath "${{ steps.syft.outputs.cmd }}" `
             -PackagePath "${{ steps.package.outputs.path }}" `
-            -OutputPath "artifacts/DocRefract.Tool.$version.spdx.json" `
-            -WorkDirectory (Join-Path $env:RUNNER_TEMP "docrefract-sbom-payload") `
+            -OutputPath "artifacts/package/DocRefract.Tool.$version.spdx.json" `
+            -WorkDirectory (Join-Path $env:RUNNER_TEMP "docrefract-package-sbom") `
             -Version $version `
             -RepositoryUrl "https://github.com/$env:GITHUB_REPOSITORY"
 
+      - name: Normalize package SPDX provenance
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          ./tools/ci/normalize-spdx.ps1 `
+            -SbomPath "artifacts/package/DocRefract.Tool.$version.spdx.json" `
+            -DocumentNamespace "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v$version/DocRefract.Tool.$version.spdx.json" `
+            -CreatedUtc "${{ steps.version.outputs.created }}"
+
       - name: Stage release notices
         shell: pwsh
-        run: Copy-Item docs/THIRD_PARTY_NOTICES.md artifacts/THIRD_PARTY_NOTICES.md
+        run: >
+          Copy-Item
+          docs/THIRD_PARTY_NOTICES.md
+          artifacts/package/THIRD_PARTY_NOTICES.md
+
+      - name: Upload verified package components
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: package-${{ steps.version.outputs.version }}
+          path: |
+            artifacts/package/*.nupkg
+            artifacts/package/*.spdx.json
+            artifacts/package/THIRD_PARTY_NOTICES.md
+          if-no-files-found: error
+          retention-days: 14
+
+  native:
+    name: Native ${{ matrix.rid }}
+    needs: package
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            rid: linux-x64
+          - runner: ubuntu-24.04-arm
+            rid: linux-arm64
+          - runner: macos-15-intel
+            rid: osx-x64
+          - runner: macos-15
+            rid: osx-arm64
+          - runner: windows-2025
+            rid: win-x64
+          - runner: windows-11-arm
+            rid: win-arm64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.302
+          cache: true
+          cache-dependency-path: |
+            **/packages.lock.json
+            eng/native-locks/*.lock.json
+
+      - name: Restore native runtime
+        run: >
+          dotnet restore
+          src/DocRefract.Cli/DocRefract.Cli.csproj
+          -p:RuntimeIdentifier=${{ matrix.rid }}
+          -p:SelfContained=true
+          --locked-mode
+
+      - name: Build native distribution
+        id: distribution
+        shell: pwsh
+        run: |
+          $version = "${{ needs.package.outputs.version }}"
+          $archive = ./tools/ci/build-native-distribution.ps1 `
+            -RuntimeIdentifier "${{ matrix.rid }}" `
+            -Version $version `
+            -OutputDirectory "artifacts/native" `
+            -WorkDirectory (Join-Path $env:RUNNER_TEMP "docrefract-native-build-${{ matrix.rid }}")
+          "archive=$archive" >> $env:GITHUB_OUTPUT
+
+      - name: Upload verified native archive
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-${{ matrix.rid }}
+          path: ${{ steps.distribution.outputs.archive }}
+          if-no-files-found: error
+          retention-days: 14
+
+  assemble:
+    name: Assemble exact release contract
+    needs: [package, native]
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - name: Check out verification code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Download package components
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: package-${{ needs.package.outputs.version }}
+          path: release-artifact/bundle
+
+      - name: Download all native archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: native-*
+          path: release-artifact/bundle
+          merge-multiple: true
+
+      - name: Download verified Syft
+        id: syft
+        shell: pwsh
+        run: |
+          $syft = ./tools/ci/install-syft.ps1 `
+            -Version "1.48.0" `
+            -ExpectedSha256 "6cef9a7f37220d9067eaf9cfaaa2fce986e9f320a8d42cbc36658c99af78ea04" `
+            -DestinationDirectory (Join-Path $env:RUNNER_TEMP "syft-1.48.0")
+          "cmd=$syft" >> $env:GITHUB_OUTPUT
+
+      - name: Build all clean-extracted native SPDX SBOMs
+        shell: pwsh
+        run: |
+          $version = "${{ needs.package.outputs.version }}"
+          $rids = @(
+            "linux-x64",
+            "linux-arm64",
+            "osx-x64",
+            "osx-arm64",
+            "win-x64",
+            "win-arm64"
+          )
+          foreach ($rid in $rids) {
+            $extension = if ($rid.StartsWith("win-")) { ".zip" } else { ".tar.gz" }
+            $rootName = "docrefract-$version-$rid"
+            ./tools/ci/build-native-sbom.ps1 `
+              -SyftPath "${{ steps.syft.outputs.cmd }}" `
+              -ArchivePath "release-artifact/bundle/$rootName$extension" `
+              -OutputPath "release-artifact/bundle/$rootName.spdx.json" `
+              -WorkDirectory (Join-Path $env:RUNNER_TEMP "docrefract-native-sbom-$rid") `
+              -Version $version `
+              -RuntimeIdentifier $rid `
+              -RepositoryUrl "https://github.com/$env:GITHUB_REPOSITORY"
+            ./tools/ci/normalize-spdx.ps1 `
+              -SbomPath "release-artifact/bundle/$rootName.spdx.json" `
+              -DocumentNamespace "https://github.com/$env:GITHUB_REPOSITORY/releases/download/v$version/$rootName.spdx.json" `
+              -CreatedUtc "${{ needs.package.outputs.created }}"
+          }
 
       - name: Create checksums
         shell: pwsh
         run: |
-          $lines = Get-ChildItem artifacts -File |
-            Where-Object Name -ne "SHA256SUMS" |
+          $bundle = "release-artifact/bundle"
+          $files = @(Get-ChildItem $bundle -File)
+          if ($files.Count -ne 15) {
+            throw "Expected 15 assets before SHA256SUMS, found $($files.Count)."
+          }
+          $lines = $files |
             Sort-Object Name |
             ForEach-Object {
               $hash = (Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLowerInvariant()
               "$hash  $($_.Name)"
             }
           [IO.File]::WriteAllLines(
-            (Join-Path $PWD "artifacts/SHA256SUMS"),
+            (Join-Path $PWD "$bundle/SHA256SUMS"),
             $lines,
             [Text.UTF8Encoding]::new($false)
           )
 
-      - name: Verify release bundle
+      - name: Verify exact 16-asset release bundle
         shell: pwsh
-        run: >
-          ./tools/ci/verify-release-bundle.ps1
-          -BundleDirectory artifacts
-          -Version ${{ steps.version.outputs.version }}
-          -RepositoryUrl "https://github.com/$env:GITHUB_REPOSITORY"
+        run: |
+          ./tools/ci/verify-release-bundle.ps1 `
+            -BundleDirectory release-artifact/bundle `
+            -Version "${{ needs.package.outputs.version }}" `
+            -RepositoryUrl "https://github.com/$env:GITHUB_REPOSITORY" `
+            -RepositoryCommit "${{ needs.package.outputs.commit }}" `
+            -CreatedUtc "${{ needs.package.outputs.created }}"
 
-      - name: Upload release bundle
+      - name: Stage internal resume verifiers
+        shell: pwsh
+        run: |
+          $root = "release-artifact/internal/repo"
+          New-Item -ItemType Directory -Force -Path "$root/tools/ci" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$root/tests/DocRefract.Tests" | Out-Null
+          Copy-Item tools/ci/verify-release-file-set.ps1 "$root/tools/ci/"
+          Copy-Item tools/ci/verify-nuget-package-equivalence.ps1 "$root/tools/ci/"
+          Copy-Item tools/ci/smoke-tool.ps1 "$root/tools/ci/"
+          Copy-Item tests/DocRefract.Tests/Fixtures "$root/tests/DocRefract.Tests/" -Recurse
+
+      - name: Upload immutable release artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: docrefract-${{ steps.version.outputs.version }}
-          path: |
-            artifacts/*.nupkg
-            artifacts/*.spdx.json
-            artifacts/SHA256SUMS
-            artifacts/THIRD_PARTY_NOTICES.md
+          name: docrefract-release-${{ needs.package.outputs.version }}
+          path: release-artifact
           if-no-files-found: error
+          retention-days: 14
 
-  release:
-    name: Publish GitHub Release
-    needs: prepare
-    runs-on: ubuntu-latest
+  stage-release:
+    name: Stage or resume GitHub draft
+    needs: [package, assemble]
+    runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: write
 
     steps:
-      - name: Download verified release bundle
+      - name: Download immutable release artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: docrefract-${{ needs.prepare.outputs.version }}
-          path: artifacts
+          name: docrefract-release-${{ needs.package.outputs.version }}
+          path: release-artifact
 
-      - name: Re-verify downloaded release bundle
+      - name: Re-verify downloaded file set
         shell: pwsh
-        run: |
-          $version = "${{ needs.prepare.outputs.version }}"
-          $packageName = "DocRefract.Tool.$version.nupkg"
-          $sbomName = "DocRefract.Tool.$version.spdx.json"
-          $noticeName = "THIRD_PARTY_NOTICES.md"
-          $expectedNames = @($packageName, $sbomName, $noticeName, "SHA256SUMS") |
-            Sort-Object
-          $actualNames = @(Get-ChildItem artifacts -File | ForEach-Object Name) |
-            Sort-Object
-          if (($actualNames -join "`n") -ne ($expectedNames -join "`n")) {
-            throw "Downloaded bundle does not match the four-file whitelist."
-          }
+        run: >
+          ./release-artifact/internal/repo/tools/ci/verify-release-file-set.ps1
+          -BundleDirectory release-artifact/bundle
+          -Version ${{ needs.package.outputs.version }}
 
-          $manifest = @{}
-          $manifestLines = @(Get-Content artifacts/SHA256SUMS -Encoding UTF8)
-          if ($manifestLines.Count -ne 3) {
-            throw "Expected three checksum entries, found $($manifestLines.Count)."
-          }
-          foreach ($line in $manifestLines) {
-            if ($line -cnotmatch "^(?<hash>[0-9a-f]{64})  (?<name>[^\\/]+)$") {
-              throw "Invalid SHA256SUMS line: $line"
-            }
-            if ($manifest.ContainsKey($Matches.name)) {
-              throw "Duplicate SHA256SUMS entry: $($Matches.name)"
-            }
-            $manifest.Add($Matches.name, $Matches.hash)
-          }
-
-          $checksummedNames = @($packageName, $sbomName, $noticeName) |
-            Sort-Object
-          if ((@($manifest.Keys | Sort-Object) -join "`n") -ne ($checksummedNames -join "`n")) {
-            throw "SHA256SUMS does not match the release asset whitelist."
-          }
-          foreach ($name in $checksummedNames) {
-            $hash = (Get-FileHash -LiteralPath (Join-Path artifacts $name) -Algorithm SHA256).Hash.ToLowerInvariant()
-            if ($hash -cne $manifest[$name]) {
-              throw "Checksum mismatch for $name."
-            }
-          }
-
-          $sbom = Get-Content -LiteralPath (Join-Path artifacts $sbomName) -Raw -Encoding UTF8 |
-            ConvertFrom-Json
-          $describedIds = @(
-            $sbom.relationships |
-              Where-Object {
-                $_.spdxElementId -eq "SPDXRef-DOCUMENT" -and
-                $_.relationshipType -eq "DESCRIBES"
-              } |
-              ForEach-Object relatedSpdxElement
-          )
-          if ($describedIds.Count -ne 1) {
-            throw "Downloaded SBOM must describe exactly one root package."
-          }
-          $roots = @($sbom.packages | Where-Object { $_.SPDXID -eq $describedIds[0] })
-          if ($roots.Count -ne 1) {
-            throw "Downloaded SBOM root package is missing or duplicated."
-          }
-
-          $root = $roots[0]
-          $repository = "https://github.com/$env:GITHUB_REPOSITORY"
-          $downloadUrl = "$repository/releases/download/v$version/$packageName"
-          $purl = "pkg:nuget/DocRefract.Tool@$version"
-          $matchingChecksums = @(
-            $root.checksums |
-              Where-Object {
-                $_.algorithm -eq "SHA256" -and
-                $_.checksumValue -eq $manifest[$packageName]
-              }
-          )
-          $matchingPurls = @(
-            $root.externalRefs |
-              Where-Object {
-                $null -ne $_ -and
-                $_.referenceType -eq "purl" -and
-                $_.referenceLocator -eq $purl
-              }
-          )
-          if (
-            $root.name -ne "DocRefract.Tool" -or
-            $root.versionInfo -ne $version -or
-            $root.packageFileName -ne $packageName -or
-            $root.supplier -ne "Organization: DocRefract contributors" -or
-            $root.downloadLocation -ne $downloadUrl -or
-            $root.homepage -ne $repository -or
-            $root.filesAnalyzed -ne $false -or
-            $root.licenseDeclared -ne "Apache-2.0" -or
-            $root.licenseConcluded -ne "Apache-2.0" -or
-            $root.primaryPackagePurpose -ne "APPLICATION" -or
-            $matchingChecksums.Count -ne 1 -or
-            $matchingPurls.Count -ne 1
-          ) {
-            throw "Downloaded SBOM root does not match the package artifact."
-          }
-
-      - name: Create GitHub release
+      - name: Require immutable GitHub releases
         env:
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $version = "${{ needs.prepare.outputs.version }}"
-          $notes = @'
+          $json = @(& gh api "repos/$env:GH_REPO/immutable-releases" 2>&1)
+          if ($LASTEXITCODE -ne 0) {
+            throw "Immutable releases must be enabled before publishing: $($json -join '`n')"
+          }
+          $setting = ($json -join "`n") | ConvertFrom-Json
+          if (-not [bool]$setting.enabled) {
+            throw "Immutable releases must be enabled before publishing."
+          }
+
+      - name: Create or resume exact draft release
+
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.package.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.package.outputs.commit }}
+        shell: pwsh
+        run: |
+          $bundle = (Resolve-Path "release-artifact/bundle").Path
+          $tag = $env:GITHUB_REF_NAME
+          $encodedTag = [Uri]::EscapeDataString($tag)
+
+          function Get-ExpectedDigests {
+            $digests = @{}
+            foreach ($line in @(Get-Content "$bundle/SHA256SUMS" -Encoding UTF8)) {
+              if ($line -cnotmatch "^(?<hash>[0-9a-f]{64})  (?<name>[^\\/]+)$") {
+                throw "Invalid SHA256SUMS line: $line"
+              }
+              $digests.Add($Matches.name, "sha256:$($Matches.hash)")
+            }
+            $manifestHash = (
+              Get-FileHash "$bundle/SHA256SUMS" -Algorithm SHA256
+            ).Hash.ToLowerInvariant()
+            $digests.Add("SHA256SUMS", "sha256:$manifestHash")
+            $digests
+          }
+
+          function Get-Release {
+            $result = @(
+              & gh api "repos/$env:GH_REPO/releases/tags/$encodedTag" 2>&1
+            )
+            $exitCode = $LASTEXITCODE
+            $text = ($result -join "`n")
+            if ($exitCode -eq 0) {
+              return ($text | ConvertFrom-Json)
+            }
+            if ($text -match "HTTP 404") {
+              return $null
+            }
+            throw "Reading release $tag failed: $text"
+          }
+
+          function Assert-ReleaseAssets {
+            param(
+              [Parameter(Mandatory = $true)]
+              [object]$Release,
+              [Parameter(Mandatory = $true)]
+              [bool]$AllowMissing
+            )
+
+            $expected = Get-ExpectedDigests
+            $actual = @{}
+            foreach ($asset in @($Release.assets)) {
+              if ($actual.ContainsKey([string]$asset.name)) {
+                throw "Duplicate GitHub release asset: $($asset.name)"
+              }
+              $actual.Add([string]$asset.name, [string]$asset.digest)
+            }
+            $extra = @($actual.Keys | Where-Object { -not $expected.ContainsKey($_) })
+            if ($extra.Count -ne 0) {
+              throw "GitHub release contains unexpected assets: $($extra -join ', ')"
+            }
+            foreach ($name in $actual.Keys) {
+              if (
+                [string]::IsNullOrWhiteSpace($actual[$name]) -or
+                $actual[$name].ToLowerInvariant() -cne $expected[$name]
+              ) {
+                throw "GitHub release asset digest mismatch for $name."
+              }
+            }
+            $missing = @($expected.Keys | Where-Object { -not $actual.ContainsKey($_) })
+            if (-not $AllowMissing -and $missing.Count -ne 0) {
+              throw "GitHub release is missing assets: $($missing -join ', ')"
+            }
+            $missing | Sort-Object
+          }
+
+          $release = Get-Release
+          if ($null -eq $release) {
+            $mainCommit = @(
+              & gh api "repos/$env:GH_REPO/commits/main" --jq .sha 2>&1
+            )
+            if ($LASTEXITCODE -ne 0) {
+              throw "Resolving current main failed: $($mainCommit -join '`n')"
+            }
+            if (($mainCommit -join "").Trim() -cne $env:RELEASE_COMMIT) {
+              throw "A new release may only be staged from the current main tip."
+            }
+
+            $notes = @'
           DocRefract turns PDF and DOCX comparisons into deterministic content,
           format, layout, media, and structure changes that CI can gate.
 
-          ## Install from this release
-
-          Prerequisites: the .NET 10 SDK and GitHub CLI.
+          ## Install from NuGet.org
 
           ```console
-          gh release download v__VERSION__ --repo jinyounghub/docrefract --pattern "DocRefract.Tool.__VERSION__.nupkg" --dir .docrefract-packages
-          dotnet tool install --global DocRefract.Tool --version __VERSION__ --source .docrefract-packages
+          dotnet tool install --global DocRefract.Tool --version __VERSION__
           docrefract --version
           ```
 
-          If DocRefract is already installed, replace `install` with `update`:
+          ## Install without the .NET SDK
 
-          ```console
-          dotnet tool update --global DocRefract.Tool --version __VERSION__ --source .docrefract-packages
-          ```
-
-          You can also download the `.nupkg` asset in a browser and pass its
-          containing directory to `dotnet tool install --source`. Open a new
-          terminal if the `docrefract` command is not yet on `PATH`.
+          Download the archive matching your operating system and CPU, extract
+          its single top-level directory, and run `docrefract` (`docrefract.exe`
+          on Windows). The six archives cover Windows, Linux, and macOS on x64
+          and arm64.
 
           ## 30-second example
 
           ```console
-          docrefract baseline.docx candidate.docx --out report --fail-on content,layout,media
+          docrefract demo --out report
           ```
 
           Open `report/index.html` for the offline review or consume
           `report/diff.json` in CI. Exit codes are `0` for pass, `1` for a
           prohibited change, and `2` for an input or processing error.
 
-          ## Current boundaries
+          ## Release integrity
 
-          This early alpha compares like formats only (PDF-to-PDF or
-          DOCX-to-DOCX). It does not include OCR, exact Word pagination, or a
-          raster visual-diff fallback, and it is not a hard parser sandbox.
-
-          ## Assets
-
-          - `DocRefract.Tool.__VERSION__.nupkg`: installable .NET global tool
-          - `DocRefract.Tool.__VERSION__.spdx.json`: SPDX SBOM for the packaged runtime payload
-          - `SHA256SUMS`: SHA-256 digests for every other release asset
-          - `THIRD_PARTY_NOTICES.md`: bundled dependency notices and license references
-
-          Download all four assets into one directory before checking `SHA256SUMS`.
+          `SHA256SUMS` covers the NuGet package, notices, all six native
+          archives, and all seven SPDX SBOMs. Download all 16 assets before
+          checking the manifest.
           '@
-          $notes = $notes.Replace("__VERSION__", $version)
-          $assets = @(
-            (Get-Item "artifacts/DocRefract.Tool.$version.nupkg").FullName
-            (Get-Item "artifacts/DocRefract.Tool.$version.spdx.json").FullName
-            (Get-Item "artifacts/SHA256SUMS").FullName
-            (Get-Item "artifacts/THIRD_PARTY_NOTICES.md").FullName
+            $notes = $notes.Replace("__VERSION__", $env:RELEASE_VERSION)
+            $assets = @(
+              Get-ChildItem -LiteralPath $bundle -File |
+                Sort-Object Name |
+                ForEach-Object FullName
+            )
+            & gh release create $tag @assets `
+              --draft `
+              --verify-tag `
+              --fail-on-no-commits `
+              --generate-notes `
+              --notes $notes `
+              --title "DocRefract $tag"
+            if ($LASTEXITCODE -ne 0) {
+              throw "Creating the draft GitHub release failed."
+            }
+            $release = Get-Release
+          }
+
+          if (-not [bool]$release.draft) {
+            [void]@(Assert-ReleaseAssets -Release $release -AllowMissing $false)
+            "already-published=true" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          $missing = @(
+            Assert-ReleaseAssets -Release $release -AllowMissing $true
           )
-          gh release create $env:GITHUB_REF_NAME @assets `
-            --verify-tag `
-            --fail-on-no-commits `
-            --generate-notes `
-            --notes $notes `
-            --title "DocRefract $env:GITHUB_REF_NAME"
+          if ($missing.Count -ne 0) {
+            $missingPaths = @(
+              $missing | ForEach-Object { (Get-Item (Join-Path $bundle $_)).FullName }
+            )
+            & gh release upload $tag @missingPaths
+            if ($LASTEXITCODE -ne 0) {
+              throw "Uploading missing draft assets failed."
+            }
+          }
+
+          $release = Get-Release
+          if ($null -eq $release -or -not [bool]$release.draft) {
+            throw "The staged GitHub release is not a draft."
+          }
+          [void]@(Assert-ReleaseAssets -Release $release -AllowMissing $false)
+          "already-published=false" >> $env:GITHUB_OUTPUT
+
+  publish-nuget:
+    name: Publish exact package to NuGet.org
+    needs: [package, assemble, stage-release]
+    runs-on: ubuntu-24.04
+    environment: nuget
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download immutable release artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: docrefract-release-${{ needs.package.outputs.version }}
+          path: release-artifact
+
+      - name: Re-verify downloaded file set
+        shell: pwsh
+        run: >
+          ./release-artifact/internal/repo/tools/ci/verify-release-file-set.ps1
+          -BundleDirectory release-artifact/bundle
+          -Version ${{ needs.package.outputs.version }}
+
+      - name: Set up exact .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.302
+
+      - name: Check for an existing NuGet.org package
+        id: nuget-state
+        env:
+          RELEASE_VERSION: ${{ needs.package.outputs.version }}
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP "nuget-preflight"
+          New-Item -ItemType Directory -Path $directory -Force | Out-Null
+          $destination = Join-Path $directory "DocRefract.Tool.$env:RELEASE_VERSION.nupkg"
+          $url = (
+            "https://api.nuget.org/v3-flatcontainer/docrefract.tool/" +
+            "$env:RELEASE_VERSION/docrefract.tool.$env:RELEASE_VERSION.nupkg"
+          )
+          try {
+            Invoke-WebRequest -Uri $url -OutFile $destination -ErrorAction Stop
+            "exists=true" >> $env:GITHUB_OUTPUT
+            "path=$destination" >> $env:GITHUB_OUTPUT
+          }
+          catch {
+            $statusCode = if ($null -ne $_.Exception.Response) {
+              [int]$_.Exception.Response.StatusCode
+            }
+            else {
+              0
+            }
+            if ($statusCode -ne 404) {
+              throw
+            }
+            "exists=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Verify an existing package before resuming
+        if: steps.nuget-state.outputs.exists == 'true'
+        shell: pwsh
+        run: |
+          ./release-artifact/internal/repo/tools/ci/verify-nuget-package-equivalence.ps1 `
+            -ExpectedPackagePath "release-artifact/bundle/DocRefract.Tool.${{ needs.package.outputs.version }}.nupkg" `
+            -ActualPackagePath "${{ steps.nuget-state.outputs.path }}" `
+            -Version "${{ needs.package.outputs.version }}" `
+            -RepositoryUrl "https://github.com/$env:GITHUB_REPOSITORY" `
+            -RepositoryCommit "${{ needs.package.outputs.commit }}"
+
+      - name: NuGet login with OIDC
+        if: steps.nuget-state.outputs.exists != 'true'
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push the exact release package
+        if: steps.nuget-state.outputs.exists != 'true'
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        shell: pwsh
+        run: |
+          dotnet nuget push `
+            "release-artifact/bundle/DocRefract.Tool.${{ needs.package.outputs.version }}.nupkg" `
+            --source "https://api.nuget.org/v3/index.json" `
+            --api-key $env:NUGET_API_KEY `
+            --skip-duplicate `
+            --timeout 600
+          if ($LASTEXITCODE -ne 0) {
+            throw "NuGet.org push failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Verify and smoke the repository-signed NuGet package
+        env:
+          RELEASE_VERSION: ${{ needs.package.outputs.version }}
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP "nuget-download"
+          New-Item -ItemType Directory -Path $directory -Force | Out-Null
+          $destination = Join-Path $directory "DocRefract.Tool.$env:RELEASE_VERSION.nupkg"
+          $url = (
+            "https://api.nuget.org/v3-flatcontainer/docrefract.tool/" +
+            "$env:RELEASE_VERSION/docrefract.tool.$env:RELEASE_VERSION.nupkg"
+          )
+          $downloaded = $false
+          foreach ($attempt in 1..60) {
+            try {
+              Invoke-WebRequest -Uri $url -OutFile $destination -ErrorAction Stop
+              $downloaded = $true
+              break
+            }
+            catch {
+              $statusCode = if ($null -ne $_.Exception.Response) {
+                [int]$_.Exception.Response.StatusCode
+              }
+              else {
+                0
+              }
+              if ($statusCode -ne 404 -or $attempt -eq 60) {
+                throw
+              }
+              Start-Sleep -Seconds 15
+            }
+          }
+          if (-not $downloaded) {
+            throw "NuGet.org package did not become available within 15 minutes."
+          }
+
+          ./release-artifact/internal/repo/tools/ci/verify-nuget-package-equivalence.ps1 `
+            -ExpectedPackagePath "release-artifact/bundle/DocRefract.Tool.$env:RELEASE_VERSION.nupkg" `
+            -ActualPackagePath $destination `
+            -Version $env:RELEASE_VERSION `
+            -RepositoryUrl "https://github.com/$env:GITHUB_REPOSITORY" `
+            -RepositoryCommit "${{ needs.package.outputs.commit }}"
+
+          ./release-artifact/internal/repo/tools/ci/smoke-tool.ps1 `
+            -PackageDirectory $directory `
+            -WorkDirectory (Join-Path $env:RUNNER_TEMP "nuget-tool-smoke") `
+            -Version $env:RELEASE_VERSION
+
+  publish-release:
+    name: Publish verified GitHub release
+    needs: [package, assemble, stage-release, publish-nuget]
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Download immutable release artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: docrefract-release-${{ needs.package.outputs.version }}
+          path: release-artifact
+
+      - name: Re-verify downloaded file set
+        shell: pwsh
+        run: >
+          ./release-artifact/internal/repo/tools/ci/verify-release-file-set.ps1
+          -BundleDirectory release-artifact/bundle
+          -Version ${{ needs.package.outputs.version }}
+
+      - name: Publish only the exact staged release
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $bundle = (Resolve-Path "release-artifact/bundle").Path
+          $tag = $env:GITHUB_REF_NAME
+          $encodedTag = [Uri]::EscapeDataString($tag)
+
+          function Get-ExpectedDigests {
+            $digests = @{}
+            foreach ($line in @(Get-Content "$bundle/SHA256SUMS" -Encoding UTF8)) {
+              if ($line -cnotmatch "^(?<hash>[0-9a-f]{64})  (?<name>[^\\/]+)$") {
+                throw "Invalid SHA256SUMS line: $line"
+              }
+              $digests.Add($Matches.name, "sha256:$($Matches.hash)")
+            }
+            $manifestHash = (
+              Get-FileHash "$bundle/SHA256SUMS" -Algorithm SHA256
+            ).Hash.ToLowerInvariant()
+            $digests.Add("SHA256SUMS", "sha256:$manifestHash")
+            $digests
+          }
+
+          function Get-Release {
+            $json = @(
+              & gh api "repos/$env:GH_REPO/releases/tags/$encodedTag" 2>&1
+            )
+            if ($LASTEXITCODE -ne 0) {
+              throw "Reading staged release failed: $($json -join '`n')"
+            }
+            ($json -join "`n") | ConvertFrom-Json
+          }
+
+          function Assert-ExactRelease {
+            param([Parameter(Mandatory = $true)][object]$Release)
+            $expected = Get-ExpectedDigests
+            $actual = @{}
+            foreach ($asset in @($Release.assets)) {
+              if ($actual.ContainsKey([string]$asset.name)) {
+                throw "Duplicate GitHub release asset: $($asset.name)"
+              }
+              $actual.Add([string]$asset.name, [string]$asset.digest)
+            }
+            $expectedNames = @($expected.Keys | Sort-Object)
+            $actualNames = @($actual.Keys | Sort-Object)
+            if (($expectedNames -join "`n") -cne ($actualNames -join "`n")) {
+              throw "GitHub release assets do not match the exact 16-file contract."
+            }
+            foreach ($name in $expectedNames) {
+              if (
+                [string]::IsNullOrWhiteSpace($actual[$name]) -or
+                $actual[$name].ToLowerInvariant() -cne $expected[$name]
+              ) {
+                throw "GitHub release asset digest mismatch for $name."
+              }
+            }
+          }
+
+          $release = Get-Release
+          Assert-ExactRelease -Release $release
+          if ([bool]$release.draft) {
+            & gh release edit $tag --draft=false --latest --verify-tag
+            if ($LASTEXITCODE -ne 0) {
+              throw "Publishing the verified draft release failed."
+            }
+          }
+
+          $published = Get-Release
+          if ([bool]$published.draft) {
+            throw "GitHub release is still a draft."
+          }
+          Assert-ExactRelease -Release $published
+          if (-not [bool]$published.immutable) {
+            throw "Published GitHub release is not immutable."
+          }
+          Write-Host "Published immutable exact 16-asset GitHub release $tag."

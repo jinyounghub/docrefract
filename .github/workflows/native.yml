@@ -1,0 +1,105 @@
+name: Native distributions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/native.yml"
+      - "Directory.Build.props"
+      - "global.json"
+      - "eng/native-locks/**"
+      - "src/**"
+      - "tests/DocRefract.Tests/Fixtures/**"
+      - "tools/ci/build-native-distribution.ps1"
+      - "README.md"
+      - "LICENSE"
+      - "docs/THIRD_PARTY_NOTICES.md"
+      - "docs/licenses/**"
+  pull_request:
+    paths:
+      - ".github/workflows/native.yml"
+      - "Directory.Build.props"
+      - "global.json"
+      - "eng/native-locks/**"
+      - "src/**"
+      - "tests/DocRefract.Tests/Fixtures/**"
+      - "tools/ci/build-native-distribution.ps1"
+      - "README.md"
+      - "LICENSE"
+      - "docs/THIRD_PARTY_NOTICES.md"
+      - "docs/licenses/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  build:
+    name: native-${{ matrix.rid }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            rid: linux-x64
+          - runner: ubuntu-24.04-arm
+            rid: linux-arm64
+          - runner: macos-15-intel
+            rid: osx-x64
+          - runner: macos-15
+            rid: osx-arm64
+          - runner: windows-2025
+            rid: win-x64
+          - runner: windows-11-arm
+            rid: win-arm64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.302
+          cache: true
+          cache-dependency-path: |
+            **/packages.lock.json
+            eng/native-locks/*.lock.json
+
+      - name: Restore locked dependencies
+        run: dotnet restore DocRefract.slnx --locked-mode
+
+      - name: Restore native runtime pack
+        run: >
+          dotnet restore
+          src/DocRefract.Cli/DocRefract.Cli.csproj
+          -p:RuntimeIdentifier=${{ matrix.rid }}
+          -p:SelfContained=true
+          --locked-mode
+
+      - name: Build and smoke native distribution
+        id: distribution
+        shell: pwsh
+        run: |
+          [xml]$build = Get-Content "Directory.Build.props"
+          $version = [string]$build.Project.PropertyGroup.Version
+          $archive = ./tools/ci/build-native-distribution.ps1 `
+            -RuntimeIdentifier "${{ matrix.rid }}" `
+            -Version $version `
+            -OutputDirectory "artifacts/native" `
+            -WorkDirectory (Join-Path $env:RUNNER_TEMP "docrefract-native-${{ matrix.rid }}")
+          "archive=$archive" >> $env:GITHUB_OUTPUT
+
+      - name: Upload native distribution
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-${{ matrix.rid }}
+          path: ${{ steps.distribution.outputs.archive }}
+          if-no-files-found: error

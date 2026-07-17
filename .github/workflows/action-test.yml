@@ -1,0 +1,190 @@
+name: Action contract
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: action-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  action:
+    name: Action / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.302
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore
+        run: dotnet restore DocRefract.slnx --locked-mode
+
+      - name: Build
+        run: dotnet build DocRefract.slnx --configuration Release --no-restore
+
+      - name: Read package version
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$build = Get-Content -LiteralPath "Directory.Build.props" -Raw
+          $version = [string]$build.Project.PropertyGroup.Version
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Directory.Build.props does not define Version."
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Pack current source
+        run: >
+          dotnet pack src/DocRefract.Cli/DocRefract.Cli.csproj
+          --configuration Release
+          --no-build
+          --output artifacts/action-packages
+
+      - name: Compare identical documents
+        id: passing
+        uses: ./
+        with:
+          before: tests/DocRefract.Tests/Fixtures/pdf_identical.pdf
+          after: tests/DocRefract.Tests/Fixtures/pdf_identical.pdf
+          fail-on: any
+          out: artifacts/action-pass
+          version: ${{ steps.version.outputs.value }}
+          source: artifacts/action-packages
+          artifact-name: docrefract-action-pass-${{ matrix.os }}
+
+      - name: Assert passing contract
+        shell: pwsh
+        env:
+          DOCREFRACT_EXIT_CODE: ${{ steps.passing.outputs.exit-code }}
+          DOCREFRACT_JSON_PATH: ${{ steps.passing.outputs.json-path }}
+          DOCREFRACT_HTML_PATH: ${{ steps.passing.outputs.html-path }}
+          DOCREFRACT_ARTIFACT_ID: ${{ steps.passing.outputs.artifact-id }}
+        run: |
+          if ($env:DOCREFRACT_EXIT_CODE -ne "0") {
+            throw "Expected exit code 0, got $env:DOCREFRACT_EXIT_CODE."
+          }
+          if (-not (Test-Path -LiteralPath $env:DOCREFRACT_JSON_PATH -PathType Leaf)) {
+            throw "Passing comparison did not create diff.json."
+          }
+          if (-not (Test-Path -LiteralPath $env:DOCREFRACT_HTML_PATH -PathType Leaf)) {
+            throw "Passing comparison did not create index.html."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:DOCREFRACT_ARTIFACT_ID)) {
+            throw "Passing comparison did not expose an artifact ID."
+          }
+
+      - name: Compare prohibited content change
+        id: blocked
+        continue-on-error: true
+        uses: ./
+        with:
+          before: tests/DocRefract.Tests/Fixtures/pdf_text_before.pdf
+          after: tests/DocRefract.Tests/Fixtures/pdf_text_after.pdf
+          fail-on: content
+          out: artifacts/action-fail
+          version: ${{ steps.version.outputs.value }}
+          source: artifacts/action-packages
+          artifact-name: docrefract-action-fail-${{ matrix.os }}
+
+      - name: Assert policy-failure contract
+        shell: pwsh
+        env:
+          DOCREFRACT_STEP_OUTCOME: ${{ steps.blocked.outcome }}
+          DOCREFRACT_EXIT_CODE: ${{ steps.blocked.outputs.exit-code }}
+          DOCREFRACT_JSON_PATH: ${{ steps.blocked.outputs.json-path }}
+          DOCREFRACT_HTML_PATH: ${{ steps.blocked.outputs.html-path }}
+          DOCREFRACT_ARTIFACT_ID: ${{ steps.blocked.outputs.artifact-id }}
+        run: |
+          if ($env:DOCREFRACT_STEP_OUTCOME -ne "failure") {
+            throw "Expected action outcome failure, got $env:DOCREFRACT_STEP_OUTCOME."
+          }
+          if ($env:DOCREFRACT_EXIT_CODE -ne "1") {
+            throw "Expected preserved exit code 1, got $env:DOCREFRACT_EXIT_CODE."
+          }
+          if (-not (Test-Path -LiteralPath $env:DOCREFRACT_JSON_PATH -PathType Leaf)) {
+            throw "Policy failure did not preserve diff.json."
+          }
+          if (-not (Test-Path -LiteralPath $env:DOCREFRACT_HTML_PATH -PathType Leaf)) {
+            throw "Policy failure did not preserve index.html."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:DOCREFRACT_ARTIFACT_ID)) {
+            throw "Policy failure did not expose an artifact ID."
+          }
+
+          $report = Get-Content -LiteralPath $env:DOCREFRACT_JSON_PATH -Raw |
+              ConvertFrom-Json
+          if ([int]$report.summary.content -lt 1) {
+            throw "Expected at least one content change in the policy-failure report."
+          }
+      - name: Compare with a missing input file
+        id: missing-input
+        continue-on-error: true
+        uses: ./
+        with:
+          before: tests/DocRefract.Tests/Fixtures/does-not-exist.pdf
+          after: tests/DocRefract.Tests/Fixtures/pdf_identical.pdf
+          fail-on: any
+          out: artifacts/action-error
+          version: ${{ steps.version.outputs.value }}
+          source: artifacts/action-packages
+          artifact-name: docrefract-action-error-${{ matrix.os }}
+
+      - name: Assert input-error contract
+        shell: pwsh
+        env:
+          DOCREFRACT_STEP_OUTCOME: ${{ steps.missing-input.outcome }}
+          DOCREFRACT_EXIT_CODE: ${{ steps.missing-input.outputs.exit-code }}
+          DOCREFRACT_JSON_PATH: ${{ steps.missing-input.outputs.json-path }}
+          DOCREFRACT_HTML_PATH: ${{ steps.missing-input.outputs.html-path }}
+          DOCREFRACT_ARTIFACT_ID: ${{ steps.missing-input.outputs.artifact-id }}
+        run: |
+          if ($env:DOCREFRACT_STEP_OUTCOME -ne "failure") {
+            throw "Expected action outcome failure, got $env:DOCREFRACT_STEP_OUTCOME."
+          }
+          if ($env:DOCREFRACT_EXIT_CODE -ne "2") {
+            throw "Expected preserved exit code 2, got $env:DOCREFRACT_EXIT_CODE."
+          }
+          if ([IO.Path]::GetFileName($env:DOCREFRACT_JSON_PATH) -ne "action-error.json") {
+            throw "Input error did not expose action-error.json."
+          }
+          if ([IO.Path]::GetFileName($env:DOCREFRACT_HTML_PATH) -ne "index.html") {
+            throw "Input error did not expose index.html."
+          }
+          if (-not (Test-Path -LiteralPath $env:DOCREFRACT_JSON_PATH -PathType Leaf)) {
+            throw "Input error did not preserve action-error.json."
+          }
+          if (-not (Test-Path -LiteralPath $env:DOCREFRACT_HTML_PATH -PathType Leaf)) {
+            throw "Input error did not preserve index.html."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:DOCREFRACT_ARTIFACT_ID)) {
+            throw "Input error did not expose an artifact ID."
+          }
+
+          $errorReport = Get-Content -LiteralPath $env:DOCREFRACT_JSON_PATH -Raw |
+              ConvertFrom-Json
+          if ($errorReport.actionStatus -ne "error" -or [int]$errorReport.exitCode -ne 2) {
+            throw "Input error artifact does not satisfy the error-report contract."
+          }

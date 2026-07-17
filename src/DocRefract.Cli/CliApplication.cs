@@ -35,9 +35,16 @@ internal static class CliApplication
             return ErrorExitCode;
         }
 
-        var options = parseResult.Options!;
         try
         {
+            if (parseResult.Kind == ParseResultKind.Demo)
+            {
+                var demo = DemoRunner.Run(parseResult.DemoOptions!.OutputDirectory);
+                WriteDemoSummary(output, demo);
+                return SuccessExitCode;
+            }
+
+            var options = parseResult.Options!;
             IComparisonService comparisonService = new ComparisonService();
             var comparison = comparisonService.Compare(
                 options.BeforePath,
@@ -62,6 +69,20 @@ internal static class CliApplication
             error.WriteLine($"docrefract: {exception.Message}");
             return ErrorExitCode;
         }
+    }
+
+    private static void WriteDemoSummary(TextWriter output, DemoResult demo)
+    {
+        var summary = demo.Comparison.Report.Summary;
+        output.WriteLine(
+            $"DocRefract demo: {summary.Total} change{(summary.Total == 1 ? string.Empty : "s")} " +
+            $"(content {summary.Content}, format {summary.Format}, layout {summary.Layout}, " +
+            $"media {summary.Media}, visual {summary.Visual}, structure {summary.Structure})");
+        output.WriteLine("Demo completed successfully.");
+        output.WriteLine($"Before: {demo.BeforePath}");
+        output.WriteLine($"After: {demo.AfterPath}");
+        output.WriteLine($"JSON: {demo.JsonPath}");
+        output.WriteLine($"Report: {demo.HtmlPath}");
     }
 
     private static void WriteSummary(
@@ -90,10 +111,14 @@ internal static class CliApplication
 
         Usage:
           docrefract <before> <after> --out <directory> [options]
+          docrefract demo --out <directory>
 
         Arguments:
           <before>                 Baseline PDF or DOCX file.
           <after>                  Candidate PDF or DOCX file.
+
+        Commands:
+          demo                     Generate sample DOCX files and an offline HTML/JSON report.
 
         Options:
           --out <directory>        Write diff.json and index.html to this directory.
@@ -106,7 +131,7 @@ internal static class CliApplication
           -V, --version            Show the version and exit.
 
         Exit codes:
-          0  Comparison completed and policy passed.
+          0  Comparison passed, or the demo completed successfully.
           1  Comparison completed and prohibited changes were found.
           2  Usage, input, or processing error.
 
