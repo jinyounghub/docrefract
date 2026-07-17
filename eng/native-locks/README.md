@@ -16,6 +16,7 @@ $rids = @(
 foreach ($rid in $rids) {
   dotnet restore src/DocRefract.Cli/DocRefract.Cli.csproj `
     "-p:RuntimeIdentifier=$rid" `
+    -p:SelfContained=true `
     --force-evaluate
 }
 ```

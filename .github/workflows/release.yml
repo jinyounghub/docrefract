@@ -227,6 +227,7 @@ jobs:
           dotnet restore
           src/DocRefract.Cli/DocRefract.Cli.csproj
           -p:RuntimeIdentifier=${{ matrix.rid }}
+          -p:SelfContained=true
           --locked-mode
 
       - name: Build native distribution

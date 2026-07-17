@@ -184,9 +184,13 @@ foreach ($workflow in @(
             $runtimeLockNeedle,
             [StringComparison]::Ordinal
         ) -lt 0 -or
+        $workflowContent.IndexOf(
+            "-p:SelfContained=true",
+            [StringComparison]::Ordinal
+        ) -lt 0 -or
         $workflowContent.IndexOf("--force-evaluate", [StringComparison]::Ordinal) -ge 0
     ) {
-        throw "$workflow must use the RID-specific lock files in locked mode."
+        throw "$workflow must restore self-contained RID-specific lock files in locked mode."
     }
 }
 $ciWorkflow = Read-RepositoryText -RelativePath ".github/workflows/ci.yml"
