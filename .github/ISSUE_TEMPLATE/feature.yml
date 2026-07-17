@@ -1,0 +1,52 @@
+name: Feature request
+description: Propose a document case, policy, integration, or report improvement.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What document pipeline or review task is difficult today?
+      placeholder: When our generated invoices change, we cannot...
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior rather than only an implementation.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - PDF extraction
+        - DOCX extraction
+        - Matching and classification
+        - CLI and policy
+        - JSON or HTML report
+        - CI integration
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Synthetic example
+      description: Show the smallest safe before/after case and expected categories.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: I understand DOCX-to-PDF and OCR are outside the v0.1 scope.
+          required: true
+        - label: I searched existing issues and roadmap notes.
+          required: true

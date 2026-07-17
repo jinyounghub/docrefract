@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "name": "docx_bold_scope_after.docx",
+      "bytes": 34399,
+      "sha256": "44aba832efa8650fd031fca8ff0e21de368d9c813897022d8ce1cf3a3f7e4e97"
+    },
+    {
+      "name": "docx_bold_scope_before.docx",
+      "bytes": 34399,
+      "sha256": "d17b57cb272de2903d34ed5db6ac506404c597c3b90d026fba0cc8e937b78018"
+    },
+    {
+      "name": "docx_floating_image_position_after.docx",
+      "bytes": 34990,
+      "sha256": "81c1d742d6c708809b5557f566d7574d2cd09aa4504c3db559f997d7e0c1d826"
+    },
+    {
+      "name": "docx_floating_image_position_before.docx",
+      "bytes": 34984,
+      "sha256": "1c034fecc92d31ebcba8294102d4190d5b42d639a820de9921cdef22f2b9dc41"
+    },
+    {
+      "name": "docx_image_move_after.docx",
+      "bytes": 34840,
+      "sha256": "5c71bbf0df62140ec045ae7803d3be9fd9b323893f0a8f77a7c5a5c6acc80bf3"
+    },
+    {
+      "name": "docx_image_move_before.docx",
+      "bytes": 34844,
+      "sha256": "d9ac917ca85dad70cd08b589b07724396eec7b46cb2415b5fc80f8b27b612b48"
+    },
+    {
+      "name": "docx_image_occurrence_after.docx",
+      "bytes": 34846,
+      "sha256": "8d6ea4daa2e2716b1a4cb82498c3b96be9f4f3e3cdd2c689ed8d6de74a64df11"
+    },
+    {
+      "name": "docx_image_occurrence_before.docx",
+      "bytes": 34825,
+      "sha256": "cb53079ba44ac4a2b7d0519e83efd36d97408a14cfece6c8f72ac897682b4732"
+    },
+    {
+      "name": "docx_large_insert_after.docx",
+      "bytes": 39911,
+      "sha256": "867407761dacbf83b34be97e64c3df42458eeac092b6b93e9300f50de276604a"
+    },
+    {
+      "name": "docx_large_insert_before.docx",
+      "bytes": 39807,
+      "sha256": "ed43d3a19b08cfb27eb47fbb22145b608ad2712c70c2faf9fc07a07be064859b"
+    },
+    {
+      "name": "docx_large_insert_format_after.docx",
+      "bytes": 40221,
+      "sha256": "968ee052a7c680f26a50e95d0aefdd2f646bb7f526140f19d2b57782b87e2b8d"
+    },
+    {
+      "name": "docx_large_insert_format_before.docx",
+      "bytes": 39807,
+      "sha256": "ed43d3a19b08cfb27eb47fbb22145b608ad2712c70c2faf9fc07a07be064859b"
+    },
+    {
+      "name": "docx_metadata_after.docx",
+      "bytes": 34234,
+      "sha256": "d2dce8f738631f336297c0ab6e7d65c864c5d7a7555068ed7610c94677b1cc2f"
+    },
+    {
+      "name": "docx_metadata_before.docx",
+      "bytes": 34226,
+      "sha256": "a36abfcafc7edac418fb4a19bc6274334b7af183683309727b191373cc8802ce"
+    },
+    {
+      "name": "docx_move_after.docx",
+      "bytes": 34385,
+      "sha256": "79b5a68fb2e52f96d69e10622f683f01f0694f24b96387e2b5987fceebc82ea9"
+    },
+    {
+      "name": "docx_move_before.docx",
+      "bytes": 34385,
+      "sha256": "2693e89cfb9cc25b8fb59f258d8f1578a083621c8361d5128f43452ba6de2e4b"
+    },
+    {
+      "name": "docx_page_break_after.docx",
+      "bytes": 34399,
+      "sha256": "f0b6cce93af4d608a679d8e10154107792773c9fc4c4dbc72f793ad72ae7778e"
+    },
+    {
+      "name": "docx_page_break_before.docx",
+      "bytes": 34386,
+      "sha256": "42e029b2433a10014fadf0bed4215a1e52b0b35261af7a3f760cc57f9276050f"
+    },
+    {
+      "name": "docx_sdt_after.docx",
+      "bytes": 34437,
+      "sha256": "9ce7bd7950ec461f37541cabae8f70e7e4f0a0de691b404d4d0e222632b8d6b0"
+    },
+    {
+      "name": "docx_sdt_before.docx",
+      "bytes": 34438,
+      "sha256": "03c59833d06a93bec0bf03e761bcba6d08eebe31bf986029ce01d27944be0c3d"
+    },
+    {
+      "name": "docx_style_after.docx",
+      "bytes": 34397,
+      "sha256": "aced9b4a373692f9e87307a83d6078a97a960542a997f38c4b559718d7950ebe"
+    },
+    {
+      "name": "docx_style_before.docx",
+      "bytes": 34405,
+      "sha256": "da6ae1860a37a53d75366f6a187ebcef4380484deb1c5fbc4f8c771356152f84"
+    },
+    {
+      "name": "docx_style_rsid_after.docx",
+      "bytes": 34853,
+      "sha256": "16be7382b17f9a20406ecda5cb262d1e928f7223d0b5cde745b12c448c5c5b0c"
+    },
+    {
+      "name": "docx_style_rsid_before.docx",
+      "bytes": 34850,
+      "sha256": "1057452d03058d5f082723ed62df788c92dac677efda4da12d9012999af94145"
+    },
+    {
+      "name": "docx_tab_after.docx",
+      "bytes": 34385,
+      "sha256": "48813c79ee114db7a605b65ae40d2bba61638506782867fe361eb8a983e97337"
+    },
+    {
+      "name": "docx_tab_before.docx",
+      "bytes": 34386,
+      "sha256": "2b2b20c3c2d0e95fcf9baf2677a3475f35b4a9f99456737feb2084c4b50bd0c0"
+    },
+    {
+      "name": "docx_table_after.docx",
+      "bytes": 34647,
+      "sha256": "878ba7c305c232405d2c9b2f1f5f097ed20f9fc54dca67e8e5bed6a10fe76334"
+    },
+    {
+      "name": "docx_table_before.docx",
+      "bytes": 34645,
+      "sha256": "65fa0c79ab87230814b58e0d881cf8727ec2e107ae56699bebddf36a1224f219"
+    },
+    {
+      "name": "docx_table_width_after.docx",
+      "bytes": 34595,
+      "sha256": "c2c75ec31395519f763595cc49456da6c2812e17d456657f71a43c54c2b030cd"
+    },
+    {
+      "name": "docx_table_width_before.docx",
+      "bytes": 34588,
+      "sha256": "b1953748c4eabf9db4170f34643435c6106fb41cd038376a24238df7fe6c01ec"
+    },
+    {
+      "name": "docx_text_after.docx",
+      "bytes": 34398,
+      "sha256": "8bd9938e2d1e8a9a0f913e7e0788fd45421dea2cd9c8f2d37080a45ecea6f0cd"
+    },
+    {
+      "name": "docx_text_before.docx",
+      "bytes": 34397,
+      "sha256": "7c864ff41b4095363457bad767ccef8a9b3156508f88920a446d511b45bfc385"
+    },
+    {
+      "name": "pdf_color_after.pdf",
+      "bytes": 1350,
+      "sha256": "68e2249adc2a8edbe57dc664afb0ffcc2dd8778f14f6eb5a4a67158589e44e23"
+    },
+    {
+      "name": "pdf_color_before.pdf",
+      "bytes": 1350,
+      "sha256": "35ddf549f8465a62acf099bf2c739b5298b34013ac8619c86ae7345fbd54aa24"
+    },
+    {
+      "name": "pdf_identical.pdf",
+      "bytes": 1356,
+      "sha256": "20deb86d3d14121a543c0a863628cd729db1249b7198b8d6504b8672d6c622e4"
+    },
+    {
+      "name": "pdf_text_after.pdf",
+      "bytes": 1355,
+      "sha256": "c523b60176a8b8d3604d6b309e614cef3d489a99e8f931caa0693af87b9759ba"
+    },
+    {
+      "name": "pdf_text_before.pdf",
+      "bytes": 1355,
+      "sha256": "98d9bc086cd6a984a553ac51ad47f62fbf50ef7272cc195bd28b9539f2fb1d15"
+    }
+  ]
+}

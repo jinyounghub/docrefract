@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\DocRefract.Core\DocRefract.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>docrefract</AssemblyName>
+    <RootNamespace>DocRefract.Cli</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>docrefract</ToolCommandName>
+    <PackageId>DocRefract.Tool</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>DocRefract contributors</Authors>
+    <Description>Deterministic semantic regression testing for PDF and DOCX documents.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/jinyounghub/docrefract</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="..\..\docs\THIRD_PARTY_NOTICES.md" Pack="true" PackagePath="docs\" />
+    <None Include="..\..\docs\licenses\*" Pack="true" PackagePath="licenses\" />
+  </ItemGroup>
+
+</Project>

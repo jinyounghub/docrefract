@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DocRefract.Cli/DocRefract.Cli.csproj" />
+    <Project Path="src/DocRefract.Core/DocRefract.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DocRefract.Tests/DocRefract.Tests.csproj" />
+  </Folder>
+</Solution>

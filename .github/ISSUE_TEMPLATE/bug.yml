@@ -1,0 +1,74 @@
+name: Bug report
+description: Report a reproducible extraction, diff, report, or CLI defect.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Use synthetic documents only—never upload confidential files.
+        Report security issues through the private link in SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: DocRefract version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, architecture, and .NET version.
+      placeholder: Ubuntu 24.04 x64, .NET 10.0.3xx
+    validations:
+      required: true
+  - type: dropdown
+    id: format
+    attributes:
+      label: Input format
+      options:
+        - PDF
+        - DOCX
+        - Not format-specific
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: Remove confidential paths before pasting.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Explain how to create safe synthetic baseline and candidate files.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include exit code, warnings, and a redacted diff excerpt when useful.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: The report and fixtures contain no confidential or production data.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

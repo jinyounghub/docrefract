@@ -1,0 +1,129 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Validate tag version
+        id: version
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart("v")
+          [xml]$project = Get-Content "src/DocRefract.Cli/DocRefract.Cli.csproj"
+          $projectVersion = [string]$project.Project.PropertyGroup.Version
+          if ($version -ne $projectVersion) {
+            throw "Tag $env:GITHUB_REF_NAME does not match project version $projectVersion."
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore DocRefract.slnx --locked-mode
+
+      - name: Build
+        run: dotnet build DocRefract.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test DocRefract.slnx --configuration Release --no-build
+
+      - name: Pack
+        run: >
+          dotnet pack src/DocRefract.Cli/DocRefract.Cli.csproj
+          --configuration Release
+          --no-build
+          --output artifacts
+          -p:PackageVersion=${{ steps.version.outputs.version }}
+
+      - name: Smoke installed tool contract
+        shell: pwsh
+        run: >
+          ./tools/ci/smoke-tool.ps1
+          -PackageDirectory artifacts
+          -WorkDirectory artifacts/tool-smoke
+          -Version ${{ steps.version.outputs.version }}
+
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: artifacts/docrefract.spdx.json
+          upload-artifact: false
+
+      - name: Create checksums
+        shell: pwsh
+        run: |
+          $lines = Get-ChildItem artifacts -File |
+            Sort-Object Name |
+            ForEach-Object {
+              $hash = (Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLowerInvariant()
+              "$hash  $($_.Name)"
+            }
+          [IO.File]::WriteAllLines(
+            (Join-Path $PWD "artifacts/SHA256SUMS"),
+            $lines,
+            [Text.UTF8Encoding]::new($false)
+          )
+
+      - name: Publish to NuGet when configured
+        if: env.NUGET_API_KEY != ''
+        shell: pwsh
+        run: |
+          Get-ChildItem artifacts -Filter *.nupkg | ForEach-Object {
+            dotnet nuget push $_.FullName `
+              --api-key $env:NUGET_API_KEY `
+              --source https://api.nuget.org/v3/index.json `
+              --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: docrefract-${{ steps.version.outputs.version }}
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.json
+            artifacts/SHA256SUMS
+            docs/THIRD_PARTY_NOTICES.md
+          if-no-files-found: error
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $assets = @(
+            Get-ChildItem artifacts -File | ForEach-Object FullName
+            Resolve-Path docs/THIRD_PARTY_NOTICES.md
+          )
+          gh release create $env:GITHUB_REF_NAME @assets `
+            --verify-tag `
+            --generate-notes `
+            --title "DocRefract $env:GITHUB_REF_NAME"

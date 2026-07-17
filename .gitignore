@@ -1,0 +1,42 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+[Tt]est[Rr]esults/
+coverage/
+*.coverage
+*.coveragexml
+*.trx
+
+# Local reports
+/docrefract-report/
+/report/
+/reports/
+
+# Local SDK state
+/.dotnet-home/
+/.dotnet/
+
+# IDE and editor state
+/.vs/
+/.vscode/
+/.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Package output
+*.nupkg
+*.snupkg
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local secrets and environment
+.env
+.env.*
+!.env.example
+secrets.json
