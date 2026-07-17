@@ -5,6 +5,7 @@ namespace DocRefract.Cli;
 internal enum ParseResultKind
 {
     Run,
+    Demo,
     Help,
     Version,
     Error,
@@ -16,7 +17,14 @@ internal sealed record CliParseResult
 
     public CliArguments? Options { get; init; }
 
+    public DemoArguments? DemoOptions { get; init; }
+
     public string? Error { get; init; }
+}
+
+internal sealed record DemoArguments
+{
+    public required string OutputDirectory { get; init; }
 }
 
 internal sealed record CliArguments
@@ -54,6 +62,11 @@ internal sealed record CliArguments
         if (args.Any(argument => argument is "--version" or "-V"))
         {
             return new CliParseResult { Kind = ParseResultKind.Version };
+        }
+
+        if (args.Length > 0 && string.Equals(args[0], "demo", StringComparison.Ordinal))
+        {
+            return ParseDemo(args);
         }
 
         var positional = new List<string>(capacity: 2);
@@ -155,6 +168,48 @@ internal sealed record CliArguments
                 JsonOnly = jsonOnly,
                 Quiet = quiet,
             },
+        };
+    }
+
+    private static CliParseResult ParseDemo(string[] args)
+    {
+        string? outputDirectory = null;
+        for (var index = 1; index < args.Length; index++)
+        {
+            var argument = args[index];
+            if (TryReadOption(args, ref index, "--out", argument, out var outValue, out var outError))
+            {
+                if (outError is not null)
+                {
+                    return Error(outError);
+                }
+
+                if (outputDirectory is not null)
+                {
+                    return Error("option '--out' was specified more than once");
+                }
+
+                outputDirectory = outValue;
+                continue;
+            }
+
+            if (argument.StartsWith("-", StringComparison.Ordinal) && argument != "-")
+            {
+                return Error($"unknown demo option '{argument}'");
+            }
+
+            return Error($"unexpected demo argument '{argument}'");
+        }
+
+        if (string.IsNullOrWhiteSpace(outputDirectory))
+        {
+            return Error("required option '--out' is missing");
+        }
+
+        return new CliParseResult
+        {
+            Kind = ParseResultKind.Demo,
+            DemoOptions = new DemoArguments { OutputDirectory = outputDirectory },
         };
     }
 

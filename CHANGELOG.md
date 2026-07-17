@@ -7,6 +7,24 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-17
+
+### Added
+
+- Add `docrefract demo --out <directory>` to generate safe synthetic DOCX inputs and a complete offline report without setup.
+- Add the official `jinyounghub/docrefract@v0.2.0` composite Action with report upload, step summary, stable outputs, and preserved CLI exit semantics.
+- Publish a live demo report through GitHub Pages.
+- Build self-contained archives for Linux, macOS, and Windows on x64 and Arm64, with deterministic packaging and clean-extract smoke checks.
+- Prepare the global-tool package for NuGet.org discovery and trusted publishing.
+
+### Changed
+
+- Make the NuGet global tool the primary install path and move source-build instructions behind packaged installs.
+- Pin local and CI builds to the .NET `10.0.302` SDK with SDK roll-forward disabled.
+- Expand package title, description, tags, license-acceptance, and release-note metadata for search and evaluation.
+- Document glibc, code-signing, parser-isolation, rendering, OCR, and cross-format boundaries at the point of installation.
+- Normalize NuGet and SPDX artifacts, verify exact release digests, and require GitHub release immutability before publishing.
+
 ## [0.1.1] - 2026-07-17
 
 ### Fixed
@@ -35,6 +53,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Cross-platform build, test, package, installed-tool smoke, and release automation.
 - Bounded local parsing, deterministic fixture generation, and adversarial regression cases.
 
-[Unreleased]: https://github.com/jinyounghub/docrefract/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/jinyounghub/docrefract/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/jinyounghub/docrefract/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/jinyounghub/docrefract/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jinyounghub/docrefract/releases/tag/v0.1.0

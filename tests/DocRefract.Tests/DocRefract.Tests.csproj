@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\DocRefract.Cli\DocRefract.Cli.csproj" />
     <ProjectReference Include="..\..\src\DocRefract.Core\DocRefract.Core.csproj" />
   </ItemGroup>
 

@@ -7,6 +7,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <NuGetLockFilePath Condition="'$(RuntimeIdentifier)' != ''">$(MSBuildThisFileDirectory)../../eng/native-locks/DocRefract.Cli.$(RuntimeIdentifier).lock.json</NuGetLockFilePath>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -17,9 +18,13 @@
     <PackageId>DocRefract.Tool</PackageId>
 
     <Authors>DocRefract contributors</Authors>
-    <Description>Deterministic semantic regression testing for PDF and DOCX documents.</Description>
+    <Title>DocRefract - PDF and DOCX Document Regression CLI</Title>
+    <Description>Open-source semantic PDF and DOCX diff CLI for deterministic document regression testing in CI.</Description>
+    <PackageTags>pdf;docx;pdf-diff;docx-diff;document-diff;semantic-diff;document-testing;regression-testing;testing;cli;github-actions;openxml</PackageTags>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>https://github.com/jinyounghub/docrefract/releases/tag/v$(Version)</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/jinyounghub/docrefract</RepositoryUrl>
   </PropertyGroup>
 
