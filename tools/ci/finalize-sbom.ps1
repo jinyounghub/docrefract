@@ -122,6 +122,20 @@ finally {
 }
 
 $deps = $depsJson | ConvertFrom-Json
+$expectedInternalProjects = @("docrefract", "DocRefract.Core")
+foreach ($internalName in $expectedInternalProjects) {
+    $expectedIdentity = "$internalName/$Version"
+    $matches = @(
+        $deps.libraries.PSObject.Properties |
+            Where-Object {
+                $_.Name -ceq $expectedIdentity -and
+                $_.Value.type -eq "project"
+            }
+    )
+    if ($matches.Count -ne 1) {
+        throw "Packaged dependency graph must contain project $expectedIdentity exactly once."
+    }
+}
 $expectedRuntimePackages = @(
     $deps.libraries.PSObject.Properties |
         Where-Object { $_.Value.type -eq "package" } |
@@ -162,19 +176,6 @@ foreach ($expected in $expectedRuntimePackages) {
     }
 }
 
-$escapedVersion = [regex]::Escape($Version)
-foreach ($internalName in @("DocRefract.Core", "docrefract")) {
-    $matches = @(
-        $sbom.packages |
-            Where-Object {
-                $_.name -eq $internalName -and
-                $_.versionInfo -match "^$escapedVersion(?:[.]0)?$"
-            }
-    )
-    if ($matches.Count -eq 0) {
-        throw "SBOM is missing version-aligned internal component $internalName $Version."
-    }
-}
 
 $rootChecksum = @(
     $root.checksums |

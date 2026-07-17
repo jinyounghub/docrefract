@@ -143,6 +143,20 @@ finally {
 }
 
 $deps = $depsJson | ConvertFrom-Json
+$expectedInternalProjects = @("docrefract", "DocRefract.Core")
+foreach ($internalName in $expectedInternalProjects) {
+    $expectedIdentity = "$internalName/$Version"
+    $matches = @(
+        $deps.libraries.PSObject.Properties |
+            Where-Object {
+                $_.Name -ceq $expectedIdentity -and
+                $_.Value.type -eq "project"
+            }
+    )
+    if ($matches.Count -ne 1) {
+        throw "Packaged dependency graph must contain project $expectedIdentity exactly once."
+    }
+}
 $expectedRuntimePackages = @(
     $deps.libraries.PSObject.Properties |
         Where-Object { $_.Value.type -eq "package" } |
