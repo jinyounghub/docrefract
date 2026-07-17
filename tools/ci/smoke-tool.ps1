@@ -94,3 +94,4 @@ Invoke-ExpectedExit 2 "missing-input comparison" @(
 )
 
 Write-Host "Installed-tool smoke contract passed (exit codes 0, 1, and 2)."
+exit 0
