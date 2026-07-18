@@ -103,6 +103,37 @@ runs:
           ${{ steps.compare.outputs.html-path }}
         if-no-files-found: error
 
+    - name: Link uploaded report
+      if: always()
+      shell: pwsh
+      env:
+        DOCREFRACT_ARTIFACT_NAME: ${{ steps.compare.outputs.artifact-name }}
+        DOCREFRACT_ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+      run: |
+        if ([string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY) -or
+            [string]::IsNullOrWhiteSpace($env:DOCREFRACT_ARTIFACT_URL)) {
+          exit 0
+        }
+
+        $artifactUri = $null
+        if (-not [Uri]::TryCreate(
+            $env:DOCREFRACT_ARTIFACT_URL,
+            [UriKind]::Absolute,
+            [ref]$artifactUri) -or
+            -not $artifactUri.Scheme.Equals("https", [StringComparison]::OrdinalIgnoreCase) -or
+            -not $artifactUri.Host.Equals("github.com", [StringComparison]::OrdinalIgnoreCase)) {
+          Write-Warning "The uploaded artifact URL was not a valid GitHub HTTPS URL."
+          exit 0
+        }
+
+        $encodedName = [Net.WebUtility]::HtmlEncode($env:DOCREFRACT_ARTIFACT_NAME)
+        $encodedUrl = [Net.WebUtility]::HtmlEncode($artifactUri.AbsoluteUri)
+        $summary = "`n- <a href=`"$encodedUrl`">Download <code>$encodedName</code></a>`n"
+        [IO.File]::AppendAllText(
+          $env:GITHUB_STEP_SUMMARY,
+          $summary,
+          [Text.UTF8Encoding]::new($false))
+
     - name: Preserve DocRefract exit code
       if: always()
       shell: pwsh

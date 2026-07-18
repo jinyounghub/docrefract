@@ -1,0 +1,79 @@
+name: Consumer example
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/consumer-example.yml
+      - examples/github-actions/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: consumer-example-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  observe:
+    name: Observe a known content change
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out example fixtures
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Compare the synthetic PDFs
+        id: docrefract
+        continue-on-error: true
+        # Intentionally pin the latest published release; update this proof after publication.
+        uses: jinyounghub/docrefract@v0.2.3
+        with:
+          before: examples/github-actions/fixtures/baseline.pdf
+          after: examples/github-actions/fixtures/candidate.pdf
+          fail-on: content
+          out: artifacts/consumer-example
+          artifact-name: docrefract-consumer-example
+
+      - name: Assert the observation contract
+        if: always()
+        shell: pwsh
+        env:
+          DOCREFRACT_OUTCOME: ${{ steps.docrefract.outcome }}
+          DOCREFRACT_EXIT_CODE: ${{ steps.docrefract.outputs.exit-code }}
+          DOCREFRACT_ARTIFACT_ID: ${{ steps.docrefract.outputs.artifact-id }}
+          DOCREFRACT_ARTIFACT_URL: ${{ steps.docrefract.outputs.artifact-url }}
+        run: |
+          if ($env:DOCREFRACT_OUTCOME -ne "failure") {
+            throw "Expected the observation step outcome to be failure, got '$env:DOCREFRACT_OUTCOME'."
+          }
+          if ($env:DOCREFRACT_EXIT_CODE -ne "1") {
+            throw "Expected DocRefract exit code 1, got '$env:DOCREFRACT_EXIT_CODE'."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:DOCREFRACT_ARTIFACT_ID)) {
+            throw "The example did not expose an artifact ID."
+          }
+
+          $artifactUri = $null
+          if (-not [Uri]::TryCreate(
+              $env:DOCREFRACT_ARTIFACT_URL,
+              [UriKind]::Absolute,
+              [ref]$artifactUri) -or
+              -not $artifactUri.Scheme.Equals("https", [StringComparison]::OrdinalIgnoreCase) -or
+              -not $artifactUri.Host.Equals("github.com", [StringComparison]::OrdinalIgnoreCase)) {
+            throw "The example did not expose a valid GitHub artifact URL."
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+            $encodedUrl = [Net.WebUtility]::HtmlEncode($artifactUri.AbsoluteUri)
+            $summary = "`n## Consumer example · observation passed`n`n" +
+              "<a href=`"$encodedUrl`">Download the DocRefract report artifact</a>.`n"
+            [IO.File]::AppendAllText(
+              $env:GITHUB_STEP_SUMMARY,
+              $summary,
+              [Text.UTF8Encoding]::new($false))
+          }
+
+          "Observation mode passed. Review the linked artifact before enforcing the policy."

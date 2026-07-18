@@ -28,6 +28,7 @@ foreach ($needle in @(
     "dotnet tool update --global DocRefract.Tool --version $version",
     "gh release download v$version",
     "docrefract demo --out report",
+    "dnx DocRefract.Tool@$version -- demo --out report",
     "https://jinyounghub.github.io/docrefract/",
     "uses: jinyounghub/docrefract@v$version"
 )) {
@@ -80,6 +81,19 @@ $checks = @(
         Needles = @("""toolVersion"": ""$version""")
     },
     [pscustomobject]@{
+        Path = "docs/site/index.html"
+        Needles = @(
+            "DocRefract.Tool@$version",
+            "/packages/DocRefract.Tool/$version",
+            "docrefract@v$version",
+            "/releases/tag/v$version"
+        )
+    },
+    [pscustomobject]@{
+        Path = "examples/github-actions/document-regression.yml"
+        Needles = @("uses: jinyounghub/docrefract@v$version")
+    },
+    [pscustomobject]@{
         Path = ".github/ISSUE_TEMPLATE/bug.yml"
         Needles = @("placeholder: $version")
     },
@@ -111,6 +125,7 @@ $requiredPackageMetadata = [ordered]@{
     PackageId = "DocRefract.Tool"
     Title = "DocRefract - PDF and DOCX Document Regression CLI"
     PackageRequireLicenseAcceptance = "false"
+    PackageIcon = "docrefract-icon.png"
     PackageReleaseNotes = 'https://github.com/jinyounghub/docrefract/releases/tag/v$(Version)'
 }
 foreach ($propertyName in $requiredPackageMetadata.Keys) {

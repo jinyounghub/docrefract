@@ -7,6 +7,16 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- Add a conversion-focused Pages landing page, custom social-preview assets, and a reusable observation-mode GitHub Action example with synthetic PDF fixtures.
+- Embed a square package icon in future NuGet packages.
+
+### Changed
+
+- Put the verified one-shot `dnx` demo before installation details and make the Action adoption path explicit: observe, review evidence, then enforce.
+- Link uploaded report artifacts from the composite Action job summary.
+
 ### Fixed
 
 - Resume an exact GitHub draft release by paginating authenticated releases because the tag endpoint excludes drafts.
