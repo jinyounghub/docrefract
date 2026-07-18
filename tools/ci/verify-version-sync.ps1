@@ -72,6 +72,7 @@ $checks = @(
     [pscustomobject]@{
         Path = "action.yml"
         Needles = @(
+            "description: Compare PDF/DOCX documents in deterministic regression tests and upload semantic diff reports.",
             "default: $version",
             "dotnet-version: 10.0.302"
         )
@@ -100,7 +101,7 @@ $checks = @(
     [pscustomobject]@{
         Path = "CHANGELOG.md"
         Needles = @(
-            "## [$version] - 2026-07-18",
+            "## [$version] - 2026-07-19",
             "[Unreleased]: https://github.com/jinyounghub/docrefract/compare/v$version...HEAD"
         )
     }
@@ -151,10 +152,18 @@ if ($null -ne $tagsNode) {
     )
 }
 foreach ($requiredTag in @(
+    "compare",
+    "comparison",
+    "word-diff",
     "pdf-diff",
     "docx-diff",
+    "pdf-comparison",
+    "docx-comparison",
+    "document-comparison",
     "document-testing",
     "regression-testing",
+    "ci",
+    "github-action",
     "github-actions"
 )) {
     if ($packageTags -notcontains $requiredTag) {

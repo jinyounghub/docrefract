@@ -22,7 +22,7 @@ jobs:
       - name: Compare generated document (observe first)
         id: docrefract
         continue-on-error: true
-        uses: jinyounghub/docrefract@v0.2.3
+        uses: jinyounghub/docrefract@v0.2.4
         with:
           before: test/baselines/report.pdf
           after: build/report.pdf

@@ -18,7 +18,7 @@ DocRefract is an open-source PDF diff and DOCX diff tool: a document regression 
 Run a safe synthetic comparison once without permanently installing a tool:
 
 ```console
-dnx DocRefract.Tool@0.2.3 -- demo --out report
+dnx DocRefract.Tool@0.2.4 -- demo --out report
 ```
 
 Open `report/index.html`. The demo creates its own synthetic DOCX files, reports known `content`, `format`, and `layout` changes, and uploads nothing. `dnx` ships with the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
@@ -28,7 +28,7 @@ No .NET available? [Open the live report](https://jinyounghub.github.io/docrefra
 ![DocRefract offline comparison report](https://raw.githubusercontent.com/jinyounghub/docrefract/main/docs/assets/report-preview.png)
 
 > [!IMPORTANT]
-> DocRefract is an early alpha. Pin version `0.2.3` in automation and review the [current boundaries](#current-boundaries) before using it as a release gate.
+> DocRefract is an early alpha. Pin version `0.2.4` in automation and review the [current boundaries](#current-boundaries) before using it as a release gate.
 
 ## Install
 
@@ -37,7 +37,7 @@ No .NET available? [Open the live report](https://jinyounghub.github.io/docrefra
 Install the pinned release from [NuGet.org](https://www.nuget.org/packages/DocRefract.Tool/). This path requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```console
-dotnet tool install --global DocRefract.Tool --version 0.2.3
+dotnet tool install --global DocRefract.Tool --version 0.2.4
 ```
 
 Confirm the command is available:
@@ -49,44 +49,44 @@ docrefract --version
 If DocRefract is already installed:
 
 ```console
-dotnet tool update --global DocRefract.Tool --version 0.2.3
+dotnet tool update --global DocRefract.Tool --version 0.2.4
 ```
 
 Open a new terminal if `docrefract` is not yet on `PATH`.
 
 ### Self-contained native archives
 
-If the global tool is unsuitable, the [v0.2.3 GitHub Release](https://github.com/jinyounghub/docrefract/releases/tag/v0.2.3) provides six self-contained fallback archives that do not require a separately installed .NET runtime.
+If the global tool is unsuitable, the [v0.2.4 GitHub Release](https://github.com/jinyounghub/docrefract/releases/tag/v0.2.4) provides six self-contained fallback archives that do not require a separately installed .NET runtime.
 
 | Platform | Architecture | Release asset |
 | --- | --- | --- |
-| Linux | x64 | `docrefract-0.2.3-linux-x64.tar.gz` |
-| Linux | Arm64 | `docrefract-0.2.3-linux-arm64.tar.gz` |
-| macOS | Intel x64 | `docrefract-0.2.3-osx-x64.tar.gz` |
-| macOS | Apple silicon | `docrefract-0.2.3-osx-arm64.tar.gz` |
-| Windows | x64 | `docrefract-0.2.3-win-x64.zip` |
-| Windows | Arm64 | `docrefract-0.2.3-win-arm64.zip` |
+| Linux | x64 | `docrefract-0.2.4-linux-x64.tar.gz` |
+| Linux | Arm64 | `docrefract-0.2.4-linux-arm64.tar.gz` |
+| macOS | Intel x64 | `docrefract-0.2.4-osx-x64.tar.gz` |
+| macOS | Apple silicon | `docrefract-0.2.4-osx-arm64.tar.gz` |
+| Windows | x64 | `docrefract-0.2.4-win-x64.zip` |
+| Windows | Arm64 | `docrefract-0.2.4-win-arm64.zip` |
 
 For example, on Linux x64:
 
 ```console
-tar -xzf docrefract-0.2.3-linux-x64.tar.gz
-./docrefract-0.2.3-linux-x64/docrefract --version
+tar -xzf docrefract-0.2.4-linux-x64.tar.gz
+./docrefract-0.2.4-linux-x64/docrefract --version
 ```
 
 On Windows x64 in PowerShell:
 
 ```powershell
-Expand-Archive .\docrefract-0.2.3-win-x64.zip
-.\docrefract-0.2.3-win-x64\docrefract.exe --version
+Expand-Archive .\docrefract-0.2.4-win-x64.zip
+.\docrefract-0.2.4-win-x64\docrefract.exe --version
 ```
 
-The Linux builds target glibc-based distributions; musl/Alpine is not supported yet. The macOS and Windows archives are not code-signed in v0.2.3, so Gatekeeper or SmartScreen may warn. Do not weaken operating-system security controls; use the NuGet tool install when an unsigned executable is not acceptable.
+The Linux builds target glibc-based distributions; musl/Alpine is not supported yet. The macOS and Windows archives are not code-signed in v0.2.4, so Gatekeeper or SmartScreen may warn. Do not weaken operating-system security controls; use the NuGet tool install when an unsigned executable is not acceptable.
 
 To verify downloaded release assets:
 
 ```console
-gh release download v0.2.3 --repo jinyounghub/docrefract --dir .docrefract-release
+gh release download v0.2.4 --repo jinyounghub/docrefract --dir .docrefract-release
 cd .docrefract-release
 sha256sum --check SHA256SUMS
 ```
@@ -164,7 +164,7 @@ jobs:
       - name: Compare generated document (observe first)
         id: docrefract
         continue-on-error: true
-        uses: jinyounghub/docrefract@v0.2.3
+        uses: jinyounghub/docrefract@v0.2.4
         with:
           before: test/baseline.pdf
           after: build/report.pdf
@@ -230,7 +230,7 @@ Treat every input as untrusted. DocRefract does not fetch external DOCX relation
 
 ## Current boundaries
 
-v0.2.3 intentionally does not include:
+v0.2.4 intentionally does not include:
 
 - PDF-to-DOCX or DOCX-to-PDF comparison;
 - OCR for scanned or image-only PDFs;
@@ -257,7 +257,7 @@ To build and install a local package:
 
 ```console
 dotnet pack src/DocRefract.Cli -c Release -o artifacts/packages
-dotnet tool install --global DocRefract.Tool --version 0.2.3 --source artifacts/packages
+dotnet tool install --global DocRefract.Tool --version 0.2.4 --source artifacts/packages
 ```
 
 ## Roadmap

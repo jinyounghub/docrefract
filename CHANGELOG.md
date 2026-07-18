@@ -7,15 +7,18 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-07-19
+
 ### Added
 
 - Add a conversion-focused Pages landing page, custom social-preview assets, and a reusable observation-mode GitHub Action example with synthetic PDF fixtures.
-- Embed a square package icon in future NuGet packages.
+- Embed a square package icon in the NuGet package.
 
 ### Changed
 
 - Put the verified one-shot `dnx` demo before installation details and make the Action adoption path explicit: observe, review evidence, then enforce.
 - Link uploaded report artifacts from the composite Action job summary.
+- Expand NuGet and Marketplace descriptions and tags for document comparison and regression-testing searches.
 
 ### Fixed
 
@@ -86,7 +89,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Cross-platform build, test, package, installed-tool smoke, and release automation.
 - Bounded local parsing, deterministic fixture generation, and adversarial regression cases.
 
-[Unreleased]: https://github.com/jinyounghub/docrefract/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/jinyounghub/docrefract/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/jinyounghub/docrefract/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/jinyounghub/docrefract/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/jinyounghub/docrefract/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/jinyounghub/docrefract/compare/v0.1.1...v0.2.1
