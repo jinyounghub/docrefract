@@ -7,6 +7,13 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-07-18
+
+### Fixed
+
+- Avoid PowerShell automatic-variable collisions throughout native archive and SPDX verification.
+- Run the clean-extracted native SBOM contract on every relevant pull request before a release tag can be created.
+
 ## [0.2.1] - 2026-07-18
 
 ### Added
@@ -57,7 +64,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Cross-platform build, test, package, installed-tool smoke, and release automation.
 - Bounded local parsing, deterministic fixture generation, and adversarial regression cases.
 
-[Unreleased]: https://github.com/jinyounghub/docrefract/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/jinyounghub/docrefract/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/jinyounghub/docrefract/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/jinyounghub/docrefract/compare/v0.1.1...v0.2.1
 [0.1.1]: https://github.com/jinyounghub/docrefract/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jinyounghub/docrefract/releases/tag/v0.1.0

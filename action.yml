@@ -24,7 +24,7 @@ inputs:
   version:
     description: DocRefract tool version. Override this when testing an unreleased package.
     required: false
-    default: 0.2.1
+    default: 0.2.2
   source:
     description: HTTPS release nupkg URL, HTTPS NuGet feed, local nupkg, or local package directory. "{version}" is replaced with the version input.
     required: false

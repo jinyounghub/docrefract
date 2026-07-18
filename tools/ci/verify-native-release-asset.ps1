@@ -42,15 +42,15 @@ if (Test-Path -LiteralPath $work) {
     throw "Native verification work directory already exists: $work"
 }
 
-$isWindows = $RuntimeIdentifier.StartsWith(
+$isWindowsRuntime = $RuntimeIdentifier.StartsWith(
     "win-",
     [StringComparison]::Ordinal
 )
-$extension = if ($isWindows) { ".zip" } else { ".tar.gz" }
+$extension = if ($isWindowsRuntime) { ".zip" } else { ".tar.gz" }
 $rootName = "docrefract-$Version-$RuntimeIdentifier"
 $archiveName = "$rootName$extension"
 $sbomName = "$rootName.spdx.json"
-$executableName = if ($isWindows) { "docrefract.exe" } else { "docrefract" }
+$executableName = if ($isWindowsRuntime) { "docrefract.exe" } else { "docrefract" }
 
 if ([IO.Path]::GetFileName($archive) -cne $archiveName) {
     throw "Expected native archive $archiveName."
@@ -89,7 +89,7 @@ function Assert-SafeArchiveEntry {
 $extract = Join-Path $work "extract"
 New-Item -ItemType Directory -Path $extract -Force | Out-Null
 
-if ($isWindows) {
+if ($isWindowsRuntime) {
     if ($null -eq ("System.IO.Compression.ZipFile" -as [type])) {
         Add-Type -AssemblyName System.IO.Compression.FileSystem
     }
@@ -198,14 +198,14 @@ if ($null -eq $deps.targets.PSObject.Properties[$runtimeTargetName]) {
 
 foreach ($internalName in @("docrefract", "DocRefract.Core")) {
     $identity = "$internalName/$Version"
-    $matches = @(
+    $projectMatches = @(
         $deps.libraries.PSObject.Properties |
             Where-Object {
                 $_.Name -ceq $identity -and
                 $_.Value.type -eq "project"
             }
     )
-    if ($matches.Count -ne 1) {
+    if ($projectMatches.Count -ne 1) {
         throw "Native dependency graph must contain project $identity exactly once."
     }
 }

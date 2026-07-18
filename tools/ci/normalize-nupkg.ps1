@@ -144,12 +144,12 @@ try {
                             $output.Write($bytes, 0, $bytes.Length)
                         }
                         else {
-                            $input = $mapped.Source.Open()
+                            $sourceStream = $mapped.Source.Open()
                             try {
-                                $input.CopyTo($output)
+                                $sourceStream.CopyTo($output)
                             }
                             finally {
-                                $input.Dispose()
+                                $sourceStream.Dispose()
                             }
                         }
                     }

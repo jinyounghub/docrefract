@@ -229,15 +229,68 @@ foreach ($script in @(
     }
 }
 
-$nativeSbomBuilder = Read-RepositoryText `
-    -RelativePath "tools/ci/build-native-sbom.ps1"
-if (
-    $nativeSbomBuilder.IndexOf(
-        '$isWindows =',
-        [StringComparison]::OrdinalIgnoreCase
-    ) -ge 0
-) {
-    throw "Native SBOM assembly must not assign PowerShell's read-only IsWindows variable."
+$automaticVariableNames = [Collections.Generic.HashSet[string]]::new(
+    [StringComparer]::OrdinalIgnoreCase
+)
+foreach ($name in @("IsWindows", "IsLinux", "IsMacOS", "IsCoreCLR", "Input", "Matches")) {
+    [void]$automaticVariableNames.Add($name)
+}
+
+$powerShellFiles = @(
+    Get-ChildItem -LiteralPath (Join-Path $repositoryRoot "tools") -Recurse -File |
+        Where-Object { $_.Extension -in @(".ps1", ".psm1") }
+)
+foreach ($file in $powerShellFiles) {
+    $tokens = $null
+    $parseErrors = $null
+    $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
+    $ast = [Management.Automation.Language.Parser]::ParseInput(
+        $content,
+        [ref]$tokens,
+        [ref]$parseErrors
+    )
+    if (@($parseErrors).Count -ne 0) {
+        throw "PowerShell syntax validation failed for $($file.FullName)."
+    }
+
+    $collisions = @(
+        $ast.FindAll(
+            {
+                param($node)
+
+                if ($node -is [Management.Automation.Language.ParameterAst]) {
+                    return $automaticVariableNames.Contains(
+                        $node.Name.VariablePath.UserPath
+                    )
+                }
+                if ($node -is [Management.Automation.Language.AssignmentStatementAst]) {
+                    $assignedVariables = @(
+                        $node.Left.FindAll(
+                            {
+                                param($candidate)
+                                $candidate -is [Management.Automation.Language.VariableExpressionAst]
+                            },
+                            $true
+                        )
+                    )
+                    return @(
+                        $assignedVariables |
+                            Where-Object {
+                                $automaticVariableNames.Contains(
+                                    $_.VariablePath.UserPath
+                                )
+                            }
+                    ).Count -ne 0
+                }
+                return $false
+            },
+            $true
+        )
+    )
+    if ($collisions.Count -ne 0) {
+        $relativePath = $file.FullName.Substring($repositoryRoot.Length + 1)
+        throw "$relativePath assigns or declares a protected PowerShell automatic variable."
+    }
 }
 
 Write-Host "Versioned package, NuGet install, native assets, Action, demo, report, documentation, issue metadata, and SDK pin are synchronized at $version."
