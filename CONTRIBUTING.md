@@ -29,6 +29,9 @@ The repository pins its expected SDK feature band in `global.json`. A newer
 .NET 10 feature band may be selected through the configured roll-forward
 policy.
 
+Maintainers publishing a version must follow the fail-closed
+[release runbook](docs/releasing.md).
+
 ## A good change
 
 1. Create a short branch from `main`.

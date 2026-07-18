@@ -387,19 +387,18 @@ jobs:
           -BundleDirectory release-artifact/bundle
           -Version ${{ needs.package.outputs.version }}
 
-      - name: Require immutable GitHub releases
+      # GITHUB_TOKEN cannot read the admin-only immutable-releases setting. The
+      # release runbook records an administrator check against this exact tag.
+      - name: Require administrator immutability attestation
         env:
-          GH_REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ github.token }}
+          ATTESTED_TAG: ${{ vars.IMMUTABLE_RELEASES_ATTESTED_TAG }}
         shell: pwsh
         run: |
-          $json = @(& gh api "repos/$env:GH_REPO/immutable-releases" 2>&1)
-          if ($LASTEXITCODE -ne 0) {
-            throw "Immutable releases must be enabled before publishing: $($json -join '`n')"
-          }
-          $setting = ($json -join "`n") | ConvertFrom-Json
-          if (-not [bool]$setting.enabled) {
-            throw "Immutable releases must be enabled before publishing."
+          if ($env:ATTESTED_TAG -cne $env:GITHUB_REF_NAME) {
+            throw (
+              "Repository immutable releases must be administrator-verified " +
+              "for exact tag $env:GITHUB_REF_NAME before staging."
+            )
           }
 
       - name: Create or resume exact draft release

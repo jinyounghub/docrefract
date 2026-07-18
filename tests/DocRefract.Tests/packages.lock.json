@@ -129,7 +129,7 @@
       "DocRefract.Tool": {
         "type": "Project",
         "dependencies": {
-          "DocRefract.Core": "[0.2.2, )"
+          "DocRefract.Core": "[0.2.3, )"
         }
       }
     }

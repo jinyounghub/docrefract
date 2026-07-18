@@ -7,6 +7,13 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-07-18
+
+### Fixed
+
+- Replace the inaccessible Actions-token immutable-release API preflight with a fail-closed administrator attestation scoped to the exact release tag.
+- Add a maintainer runbook for immutable GitHub Releases, NuGet OIDC, Marketplace staging, and post-publication verification.
+
 ## [0.2.2] - 2026-07-18
 
 ### Fixed
@@ -64,7 +71,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Cross-platform build, test, package, installed-tool smoke, and release automation.
 - Bounded local parsing, deterministic fixture generation, and adversarial regression cases.
 
-[Unreleased]: https://github.com/jinyounghub/docrefract/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/jinyounghub/docrefract/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/jinyounghub/docrefract/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/jinyounghub/docrefract/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/jinyounghub/docrefract/compare/v0.1.1...v0.2.1
 [0.1.1]: https://github.com/jinyounghub/docrefract/compare/v0.1.0...v0.1.1
