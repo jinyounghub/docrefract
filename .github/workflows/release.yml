@@ -546,6 +546,9 @@ jobs:
 
           if (-not [bool]$release.draft) {
             [void]@(Assert-ReleaseAssets -Release $release -AllowMissing $false)
+            if (-not [bool]$release.immutable) {
+              throw "Existing public GitHub release is not immutable."
+            }
             "already-published=true" >> $env:GITHUB_OUTPUT
             exit 0
           }
@@ -810,5 +813,19 @@ jobs:
           Assert-ExactRelease -Release $published
           if (-not [bool]$published.immutable) {
             throw "Published GitHub release is not immutable."
+          }
+
+          $latestJson = @(
+            & gh api "repos/$env:GH_REPO/releases/latest" 2>&1
+          )
+          if ($LASTEXITCODE -ne 0) {
+            throw "Reading the latest GitHub release failed: $($latestJson -join '`n')"
+          }
+          $latest = ($latestJson -join "`n") | ConvertFrom-Json
+          if (
+            [string]$latest.id -cne [string]$published.id -or
+            [string]$latest.tag_name -cne $tag
+          ) {
+            throw "Published GitHub release $tag is not the latest release."
           }
           Write-Host "Published immutable exact 16-asset GitHub release $tag."
