@@ -29,7 +29,7 @@ jobs:
         id: docrefract
         continue-on-error: true
         # Intentionally pin the latest published release; update this proof after publication.
-        uses: jinyounghub/docrefract@v0.2.3
+        uses: jinyounghub/docrefract@v0.2.4
         with:
           before: examples/github-actions/fixtures/baseline.pdf
           after: examples/github-actions/fixtures/candidate.pdf
