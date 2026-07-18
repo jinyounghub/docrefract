@@ -46,15 +46,33 @@ jobs:
           --no-restore
           --
           demo
-          --out artifacts/site
+          --out artifacts/site/report
 
-      - name: Verify deployable report
+      - name: Assemble landing site
         shell: pwsh
         run: |
-          foreach ($name in @("index.html", "diff.json")) {
+          $assets = "artifacts/site/assets"
+          New-Item -ItemType Directory -Path $assets -Force | Out-Null
+          Copy-Item -LiteralPath "docs/site/index.html" -Destination "artifacts/site/index.html"
+          Copy-Item -LiteralPath "docs/assets/report-preview.png" -Destination $assets
+          Copy-Item -LiteralPath "docs/assets/docrefract-icon.png" -Destination $assets
+          Copy-Item -LiteralPath "docs/assets/social-preview.png" -Destination $assets
+
+      - name: Verify deployable site
+        shell: pwsh
+        run: |
+          $required = @(
+            "index.html",
+            "assets/report-preview.png",
+            "assets/docrefract-icon.png",
+            "assets/social-preview.png",
+            "report/index.html",
+            "report/diff.json"
+          )
+          foreach ($name in $required) {
             $path = Join-Path "artifacts/site" $name
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-              throw "Live demo did not produce $name."
+              throw "Live demo site did not produce $name."
             }
           }
 

@@ -1,23 +1,31 @@
 # DocRefract
 
 [![CI](https://github.com/jinyounghub/docrefract/actions/workflows/ci.yml/badge.svg)](https://github.com/jinyounghub/docrefract/actions/workflows/ci.yml)
+[![Action contract](https://github.com/jinyounghub/docrefract/actions/workflows/action-test.yml/badge.svg)](https://github.com/jinyounghub/docrefract/actions/workflows/action-test.yml)
 [![NuGet](https://img.shields.io/nuget/v/DocRefract.Tool.svg)](https://www.nuget.org/packages/DocRefract.Tool/)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-DocRefract-2ea44f?logo=github)](https://github.com/marketplace/actions/docrefract)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 
 **See what changed—not just where pixels moved.**
 
-DocRefract is an open-source PDF diff and DOCX diff tool: a document regression testing CLI for local-first, deterministic CI. It classifies changes as `content`, `format`, `layout`, `media`, `visual`, or `structure`, then produces machine-readable JSON and a self-contained HTML report without uploading documents to a service.
+DocRefract is an open-source PDF diff and DOCX diff tool: a document regression testing CLI for local-first, deterministic CI. It classifies emitted changes as `content`, `format`, `layout`, `media`, or `structure` (`visual` is schema-reserved), then produces machine-readable JSON and a self-contained HTML report without uploading documents to a service.
 
-[Install](#install) · [Try demo](#try-the-demo) · [Live report](https://jinyounghub.github.io/docrefract/) · [GitHub Action](#github-action)
+[30-second quickstart](#30-second-quickstart) · [Live report](https://jinyounghub.github.io/docrefract/report/) · [GitHub Action](#github-action) · [Runnable example](examples/github-actions/) · [Install](#install)
 
-![DocRefract offline comparison report](https://raw.githubusercontent.com/jinyounghub/docrefract/main/docs/assets/report-preview.png)
+## 30-second quickstart
+
+Run a safe synthetic comparison once without permanently installing a tool:
 
 ```console
-docrefract baseline.docx candidate.docx --out report --fail-on content,layout
+dnx DocRefract.Tool@0.2.3 -- demo --out report
 ```
 
-Exit code `1` fails a build only when a prohibited category changes. Exit code `2` is reserved for usage, input, parsing, or report-generation errors.
+Open `report/index.html`. The demo creates its own synthetic DOCX files, reports known `content`, `format`, and `layout` changes, and uploads nothing. `dnx` ships with the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+
+No .NET available? [Open the live report](https://jinyounghub.github.io/docrefract/report/) or use a [self-contained release archive](#self-contained-native-archives).
+
+![DocRefract offline comparison report](https://raw.githubusercontent.com/jinyounghub/docrefract/main/docs/assets/report-preview.png)
 
 > [!IMPORTANT]
 > DocRefract is an early alpha. Pin version `0.2.3` in automation and review the [current boundaries](#current-boundaries) before using it as a release gate.
@@ -95,7 +103,7 @@ docrefract demo --out report
 
 Open `report/index.html` to explore the result, or inspect `report/diff.json` for the stable automation contract. The demo intentionally contains known changes and returns exit code `0`; it does not read your documents.
 
-No installation available right now? Open the same generated report at [jinyounghub.github.io/docrefract](https://jinyounghub.github.io/docrefract/).
+No installation available right now? Open the same generated report at [jinyounghub.github.io/docrefract](https://jinyounghub.github.io/docrefract/report/).
 
 ## Compare documents
 
@@ -133,7 +141,10 @@ Without `--fail-on`, any detected change fails the comparison. Processing errors
 
 ## GitHub Action
 
-The official composite Action installs the pinned tool, runs the comparison, uploads the report even when the policy fails, and writes a job summary.
+The official composite Action installs the pinned tool, runs the comparison, uploads the report even when the policy fails, and writes a job summary. Its `artifact-url` output gives later workflow steps a direct evidence link. Start in observation mode so the first run teaches you what the pipeline changes before it blocks a pull request.
+
+> [!WARNING]
+> The uploaded HTML and JSON reports can contain text and metadata extracted from the inputs. Treat them with the same confidentiality as the documents, and do not publish confidential reports through public-repository workflows. See the [security policy](SECURITY.md#security-boundaries).
 
 ```yaml
 name: Document regression
@@ -149,11 +160,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - name: Generate candidate document
-        run: |
-          ./scripts/generate-report.sh # Replace with your document generator.
-          test -f build/report.pdf
-      - name: Compare generated document
+      # Build your candidate document before this step.
+      - name: Compare generated document (observe first)
+        id: docrefract
+        continue-on-error: true
         uses: jinyounghub/docrefract@v0.2.3
         with:
           before: test/baseline.pdf
@@ -162,7 +172,9 @@ jobs:
           out: artifacts/docrefract
 ```
 
-This example assumes `test/baseline.pdf` is committed and the generation step writes `build/report.pdf`. Replace the command and paths with your own pipeline.
+Commit the approved baseline, point `after` at the document produced by your existing build, and inspect the uploaded HTML report. After the policy matches your pipeline, remove `continue-on-error: true` to enforce the gate.
+
+Want a copyable starting point? Use the [consumer workflow template](examples/github-actions/document-regression.yml). The repository's tiny synthetic fixtures exercise the published Action in [live contract runs](https://github.com/jinyounghub/docrefract/actions/workflows/consumer-example.yml).
 
 The Action exposes `exit-code`, `report-path`, `json-path`, `html-path`, `artifact-id`, and `artifact-url` outputs. Exit codes keep the same CLI meaning, so a prohibited change fails the step after the evidence has been uploaded.
 

@@ -1,0 +1,31 @@
+name: Document regression
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # Add or call your existing document-generation step here.
+      # Reports can contain extracted text and metadata; apply your artifact policy.
+      - name: Compare generated document (observe first)
+        id: docrefract
+        continue-on-error: true
+        uses: jinyounghub/docrefract@v0.2.3
+        with:
+          before: test/baselines/report.pdf
+          after: build/report.pdf
+          fail-on: content,layout,media
+          out: artifacts/docrefract
+          artifact-name: docrefract-report

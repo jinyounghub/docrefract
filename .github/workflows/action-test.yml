@@ -82,6 +82,7 @@ jobs:
           DOCREFRACT_JSON_PATH: ${{ steps.passing.outputs.json-path }}
           DOCREFRACT_HTML_PATH: ${{ steps.passing.outputs.html-path }}
           DOCREFRACT_ARTIFACT_ID: ${{ steps.passing.outputs.artifact-id }}
+          DOCREFRACT_ARTIFACT_URL: ${{ steps.passing.outputs.artifact-url }}
         run: |
           if ($env:DOCREFRACT_EXIT_CODE -ne "0") {
             throw "Expected exit code 0, got $env:DOCREFRACT_EXIT_CODE."
@@ -94,6 +95,15 @@ jobs:
           }
           if ([string]::IsNullOrWhiteSpace($env:DOCREFRACT_ARTIFACT_ID)) {
             throw "Passing comparison did not expose an artifact ID."
+          }
+          $artifactUri = $null
+          if (-not [Uri]::TryCreate(
+              $env:DOCREFRACT_ARTIFACT_URL,
+              [UriKind]::Absolute,
+              [ref]$artifactUri) -or
+              -not $artifactUri.Scheme.Equals("https", [StringComparison]::OrdinalIgnoreCase) -or
+              -not $artifactUri.Host.Equals("github.com", [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Passing comparison did not expose a valid GitHub artifact URL."
           }
 
       - name: Compare prohibited content change
@@ -117,6 +127,7 @@ jobs:
           DOCREFRACT_JSON_PATH: ${{ steps.blocked.outputs.json-path }}
           DOCREFRACT_HTML_PATH: ${{ steps.blocked.outputs.html-path }}
           DOCREFRACT_ARTIFACT_ID: ${{ steps.blocked.outputs.artifact-id }}
+          DOCREFRACT_ARTIFACT_URL: ${{ steps.blocked.outputs.artifact-url }}
         run: |
           if ($env:DOCREFRACT_STEP_OUTCOME -ne "failure") {
             throw "Expected action outcome failure, got $env:DOCREFRACT_STEP_OUTCOME."
@@ -132,6 +143,15 @@ jobs:
           }
           if ([string]::IsNullOrWhiteSpace($env:DOCREFRACT_ARTIFACT_ID)) {
             throw "Policy failure did not expose an artifact ID."
+          }
+          $artifactUri = $null
+          if (-not [Uri]::TryCreate(
+              $env:DOCREFRACT_ARTIFACT_URL,
+              [UriKind]::Absolute,
+              [ref]$artifactUri) -or
+              -not $artifactUri.Scheme.Equals("https", [StringComparison]::OrdinalIgnoreCase) -or
+              -not $artifactUri.Host.Equals("github.com", [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Policy failure did not expose a valid GitHub artifact URL."
           }
 
           $report = Get-Content -LiteralPath $env:DOCREFRACT_JSON_PATH -Raw |
@@ -160,6 +180,7 @@ jobs:
           DOCREFRACT_JSON_PATH: ${{ steps.missing-input.outputs.json-path }}
           DOCREFRACT_HTML_PATH: ${{ steps.missing-input.outputs.html-path }}
           DOCREFRACT_ARTIFACT_ID: ${{ steps.missing-input.outputs.artifact-id }}
+          DOCREFRACT_ARTIFACT_URL: ${{ steps.missing-input.outputs.artifact-url }}
         run: |
           if ($env:DOCREFRACT_STEP_OUTCOME -ne "failure") {
             throw "Expected action outcome failure, got $env:DOCREFRACT_STEP_OUTCOME."
@@ -181,6 +202,15 @@ jobs:
           }
           if ([string]::IsNullOrWhiteSpace($env:DOCREFRACT_ARTIFACT_ID)) {
             throw "Input error did not expose an artifact ID."
+          }
+          $artifactUri = $null
+          if (-not [Uri]::TryCreate(
+              $env:DOCREFRACT_ARTIFACT_URL,
+              [UriKind]::Absolute,
+              [ref]$artifactUri) -or
+              -not $artifactUri.Scheme.Equals("https", [StringComparison]::OrdinalIgnoreCase) -or
+              -not $artifactUri.Host.Equals("github.com", [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Input error did not expose a valid GitHub artifact URL."
           }
 
           $errorReport = Get-Content -LiteralPath $env:DOCREFRACT_JSON_PATH -Raw |

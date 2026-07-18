@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DocRefract is an open-source PDF and DOCX diff CLI for deterministic document regression testing in CI.">
+  <meta name="theme-color" content="#090e1a">
+  <meta property="og:title" content="DocRefract · Semantic document diffs for CI">
+  <meta property="og:description" content="Classify PDF and DOCX changes as content, format, layout, media, or structure with a local-first CLI and reviewable CI evidence.">
+  <meta property="og:image" content="https://jinyounghub.github.io/docrefract/assets/social-preview.png">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://jinyounghub.github.io/docrefract/">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>DocRefract · Semantic PDF and DOCX diffs for CI</title>
+  <link rel="icon" type="image/png" href="assets/docrefract-icon.png">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b16;
+      --surface: #0d1426;
+      --surface-2: #111b31;
+      --line: rgba(174, 193, 229, 0.16);
+      --text: #f8fafc;
+      --muted: #adbbd2;
+      --violet: #8b5cf6;
+      --cyan: #22d3ee;
+      --amber: #fbbf24;
+      --green: #4ade80;
+      --shadow: 0 32px 80px rgba(0, 0, 0, 0.34);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+
+      background:
+        radial-gradient(circle at 78% 3%, rgba(124, 58, 237, 0.18), transparent 31rem),
+        radial-gradient(circle at 8% 24%, rgba(34, 211, 238, 0.08), transparent 27rem),
+        var(--bg);
+      color: var(--text);
+      font: 16px/1.65 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: inherit; }
+
+    .shell {
+      width: min(1160px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 76px;
+      gap: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      text-decoration: none;
+      font-weight: 760;
+      letter-spacing: -0.02em;
+    }
+
+    .brand img {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      box-shadow: 0 0 0 1px var(--line);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(420px, 1.05fr);
+      align-items: center;
+      gap: 64px;
+      padding: 90px 0 76px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 18px;
+      color: #d8ccff;
+      font-size: 12px;
+      font-weight: 760;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 30px;
+      height: 3px;
+      border-radius: 99px;
+      background: var(--violet);
+      content: "";
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      max-width: 710px;
+      margin-bottom: 22px;
+      font-size: clamp(43px, 5.6vw, 72px);
+      line-height: 1.04;
+      letter-spacing: -0.055em;
+    }
+
+    .gradient-text {
+      background: linear-gradient(100deg, #f8fafc 18%, #c4b5fd 58%, #67e8f9);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .lede {
+      max-width: 650px;
+      margin-bottom: 28px;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 20px);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 0 0 28px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.035);
+      color: var(--text);
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(196, 181, 253, 0.5);
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .button.primary {
+      border-color: transparent;
+      background: linear-gradient(115deg, #7c3aed, #6d5ee8 58%, #397cc9);
+      box-shadow: 0 13px 34px rgba(124, 58, 237, 0.28);
+    }
+
+    .proof {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      color: #93a4bf;
+      font-size: 13px;
+    }
+
+    .proof span::before {
+      margin-right: 7px;
+      color: var(--green);
+      content: "✓";
+    }
+
+    .report-window {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(196, 181, 253, 0.2);
+      border-radius: 18px;
+      background: #0a1020;
+      box-shadow: var(--shadow);
+      transform: perspective(1200px) rotateY(-2.5deg) rotateX(1deg);
+    }
+
+    .report-window::before {
+      display: block;
+      height: 34px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 18px 17px, #fb7185 0 4px, transparent 5px),
+        radial-gradient(circle at 34px 17px, #fbbf24 0 4px, transparent 5px),
+        radial-gradient(circle at 50px 17px, #4ade80 0 4px, transparent 5px),
+        #0e1628;
+      content: "";
+    }
+
+    .report-window img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .section {
+      padding: 84px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .section-heading {
+      max-width: 720px;
+      margin-bottom: 34px;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-size: clamp(32px, 4vw, 47px);
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+    }
+
+    .section-heading p,
+    .subtle { color: var(--muted); }
+
+    .quick-grid,
+    .action-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.04fr) minmax(300px, 0.96fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgba(17, 27, 49, 0.92), rgba(10, 16, 31, 0.92));
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+    }
+
+    .code-panel {
+      position: relative;
+      overflow: hidden;
+      padding: 24px;
+    }
+
+    .code-label {
+      margin-bottom: 16px;
+      padding-right: 82px;
+      overflow-wrap: anywhere;
+      color: #91a1bd;
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      color: #eef2ff;
+      font: 14px/1.65 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      white-space: pre;
+    }
+
+    .copy {
+      position: absolute;
+      top: 17px;
+      right: 17px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #111a2d;
+      color: #c7d2e7;
+      cursor: pointer;
+      font: 700 12px/1 ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .copy:hover { border-color: rgba(196, 181, 253, 0.45); }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .steps {
+      display: grid;
+      gap: 12px;
+      padding: 22px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 13px;
+      align-items: start;
+      padding: 13px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .step-index {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 1px solid rgba(139, 92, 246, 0.38);
+      border-radius: 10px;
+      background: rgba(124, 58, 237, 0.13);
+      color: #d8ccff;
+      font-weight: 800;
+    }
+
+    .step strong { display: block; margin: 2px 0 3px; }
+    .step span { color: var(--muted); font-size: 14px; }
+
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .category {
+      padding: 21px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(13, 20, 38, 0.7);
+    }
+
+    .category code {
+      display: inline-block;
+      margin-bottom: 9px;
+      color: #ddd6fe;
+      font-weight: 780;
+    }
+
+    .category p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .observe {
+      padding: 27px;
+    }
+
+    .observe h3 {
+      margin-bottom: 11px;
+      font-size: 22px;
+      letter-spacing: -0.02em;
+    }
+
+    .observe ol {
+      margin: 18px 0 22px;
+      padding-left: 22px;
+      color: var(--muted);
+    }
+
+    .observe li + li { margin-top: 9px; }
+
+    .note {
+      padding: 13px 15px;
+      border: 1px solid rgba(34, 211, 238, 0.19);
+      border-radius: 10px;
+      background: rgba(34, 211, 238, 0.06);
+      color: #bdd9e4;
+      font-size: 13px;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 34px 0 42px;
+      border-top: 1px solid var(--line);
+      color: #8595af;
+      font-size: 13px;
+    }
+
+    footer a { color: #bdc8da; text-decoration: none; }
+
+    @media (max-width: 900px) {
+      .hero,
+      .quick-grid,
+      .action-grid { grid-template-columns: 1fr; }
+      .hero { gap: 40px; padding-top: 64px; }
+      .report-window { transform: none; }
+      .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 620px) {
+      .shell { width: min(100% - 28px, 1160px); }
+      .nav { min-height: 66px; }
+      .nav-links a:not(:last-child) { display: none; }
+      .hero { padding: 52px 0 58px; }
+      h1 { font-size: 43px; }
+      .section { padding: 62px 0; }
+      .category-grid { grid-template-columns: 1fr; }
+      .code-panel { padding-top: 68px; }
+      .code-label { padding-right: 0; }
+      .copy { top: 18px; right: auto; left: 24px; }
+      footer { flex-direction: column; }
+    }
+
+    @media (forced-colors: active) {
+      .gradient-text {
+        background: none;
+        color: CanvasText;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .button { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell nav">
+    <a class="brand" href="./" aria-label="DocRefract home">
+      <img src="assets/docrefract-icon.png" alt="">
+      <span>DocRefract</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="#quickstart">Quickstart</a>
+      <a href="#action">GitHub Action</a>
+      <a href="https://www.nuget.org/packages/DocRefract.Tool/0.2.3">NuGet</a>
+      <a href="https://github.com/jinyounghub/docrefract">GitHub ↗</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="shell hero">
+      <div>
+        <p class="eyebrow">Open source · local-first</p>
+        <h1><span class="gradient-text">Document changes</span> your CI can actually explain.</h1>
+        <p class="lede">Compare PDF or DOCX outputs, classify what changed, and keep a deterministic JSON contract plus an offline HTML report—without sending documents to a service.</p>
+        <div class="actions">
+          <a class="button primary" href="report/">Open the live report</a>
+          <a class="button" href="https://github.com/marketplace/actions/docrefract">Get the GitHub Action</a>
+        </div>
+        <div class="proof" aria-label="Product properties">
+          <span>PDF + DOCX</span>
+          <span>JSON + HTML</span>
+          <span>No DocRefract service</span>
+        </div>
+      </div>
+      <a class="report-window" href="report/" aria-label="Open the interactive DocRefract example report">
+        <img src="assets/report-preview.png" alt="DocRefract offline report showing a classified content change">
+      </a>
+    </section>
+
+    <section class="section" id="quickstart">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">First result</p>
+          <h2>One command. No permanent install.</h2>
+          <p>Use the .NET 10 <code>dnx</code> runner to generate two safe synthetic DOCX files and a complete report in about 30 seconds.</p>
+        </div>
+        <div class="quick-grid">
+          <div class="panel code-panel">
+            <div class="code-label">Terminal</div>
+            <button class="copy" type="button" data-copy="quick-command" aria-label="Copy quickstart command">Copy</button>
+            <pre id="quick-command"><code>dnx DocRefract.Tool@0.2.3 -- demo --out report</code></pre>
+          </div>
+          <div class="panel steps">
+            <div class="step">
+              <div class="step-index">1</div>
+              <div><strong>Run</strong><span>The demo reads no personal files and returns success.</span></div>
+            </div>
+            <div class="step">
+              <div class="step-index">2</div>
+              <div><strong>Open</strong><span>Inspect <code>report/index.html</code> locally in any browser.</span></div>
+            </div>
+            <div class="step">
+              <div class="step-index">3</div>
+              <div><strong>Automate</strong><span>Move the same category policy into CI when ready.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">Signal, not noise</p>
+          <h2>Gate the kind of change that matters.</h2>
+          <p>Unlike a single opaque mismatch, DocRefract separates evidence into stable categories that can carry different release policies.</p>
+        </div>
+        <div class="category-grid">
+          <article class="category"><code>content</code><p>Inserted, deleted, or replaced text.</p></article>
+          <article class="category"><code>format</code><p>Font, emphasis, color, or paragraph styling.</p></article>
+          <article class="category"><code>layout</code><p>Margins, page geometry, position, or reflow.</p></article>
+          <article class="category"><code>media</code><p>Media added, removed, replaced, or relinked.</p></article>
+          <article class="category"><code>visual</code><p>Schema-reserved for future raster evidence; not emitted yet.</p></article>
+          <article class="category"><code>structure</code><p>Pages, paragraphs, rows, cells, or nodes.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="action">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">CI adoption</p>
+          <h2>Observe first. Enforce after review.</h2>
+          <p>The Action always uploads the HTML and JSON evidence. Start with <code>continue-on-error</code>, tune the policy, then remove that line to make prohibited changes block a pull request.</p>
+        </div>
+        <div class="action-grid">
+          <div class="panel code-panel">
+            <div class="code-label">.github/workflows/documents.yml</div>
+            <button class="copy" type="button" data-copy="action-code" aria-label="Copy GitHub Action workflow">Copy</button>
+            <pre id="action-code"><code>- name: Compare generated document
+  id: docrefract
+  continue-on-error: true
+  uses: jinyounghub/docrefract@v0.2.3
+  with:
+    before: test/baseline.pdf
+    after: build/report.pdf
+    fail-on: content,layout,media</code></pre>
+          </div>
+          <aside class="panel observe">
+            <h3>Safe adoption path</h3>
+            <ol>
+              <li>Commit one approved baseline.</li>
+              <li>Point <code>after</code> at the document your build already creates.</li>
+              <li>Review the uploaded report artifact and select categories.</li>
+              <li>Remove <code>continue-on-error</code> to enforce the gate.</li>
+            </ol>
+            <div class="actions">
+              <a class="button primary" href="https://github.com/jinyounghub/docrefract/tree/main/examples/github-actions">View the runnable example</a>
+            </div>
+            <div class="note"><strong>Confidentiality:</strong> the Action uploads a report artifact that can contain extracted text and metadata. Treat it with the same confidentiality as the inputs; do not publish confidential reports through public-repository workflows. See the <a href="https://github.com/jinyounghub/docrefract/blob/main/SECURITY.md">security policy</a>.</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell">
+    <span>Apache-2.0 · deterministic by design · CLI local, CI evidence follows your artifact policy</span>
+    <span><a href="https://github.com/jinyounghub/docrefract">Source</a> · <a href="https://github.com/jinyounghub/docrefract/releases/tag/v0.2.3">Release</a> · <a href="https://www.nuget.org/packages/DocRefract.Tool/0.2.3">NuGet</a></span>
+  </footer>
+
+  <p class="sr-only" id="copy-status" role="status" aria-live="polite"></p>
+
+  <script>
+    const copyStatus = document.getElementById("copy-status");
+    for (const button of document.querySelectorAll("[data-copy]")) {
+      button.addEventListener("click", async () => {
+        const target = document.getElementById(button.dataset.copy);
+        if (!target) return;
+        try {
+          await navigator.clipboard.writeText(target.innerText);
+          const previous = button.textContent;
+          button.textContent = "Copied";
+          copyStatus.textContent = `${button.getAttribute("aria-label")} copied.`;
+          window.setTimeout(() => { button.textContent = previous; }, 1500);
+        } catch {
+          button.textContent = "Select text";
+          copyStatus.textContent = "Automatic copy failed. Select and copy the code manually.";
+        }
+      });
+    }
+  </script>
+</body>
+</html>
