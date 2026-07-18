@@ -438,10 +438,34 @@ jobs:
             if ($exitCode -eq 0) {
               return ($text | ConvertFrom-Json)
             }
-            if ($text -match "HTTP 404") {
-              return $null
+            if ($text -notmatch "HTTP 404") {
+              throw "Reading release $tag failed: $text"
             }
-            throw "Reading release $tag failed: $text"
+
+            # The tag endpoint excludes drafts. Search every release page so a
+            # failed staging attempt can resume its exact draft safely.
+            $listResult = @(
+              & gh api --paginate --slurp `
+                "repos/$env:GH_REPO/releases?per_page=100" 2>&1
+            )
+            $listExitCode = $LASTEXITCODE
+            $listText = ($listResult -join "`n")
+            if ($listExitCode -ne 0) {
+              throw "Reading release list for $tag failed: $listText"
+            }
+            $pages = $listText | ConvertFrom-Json
+            $releaseCandidates = @(
+              $pages |
+                ForEach-Object { $_ } |
+                Where-Object { [string]$_.tag_name -ceq $tag }
+            )
+            if ($releaseCandidates.Count -gt 1) {
+              throw "Multiple GitHub releases found for exact tag $tag."
+            }
+            if ($releaseCandidates.Count -eq 1) {
+              return $releaseCandidates[0]
+            }
+            return $null
           }
 
           function Assert-ReleaseAssets {
@@ -542,8 +566,14 @@ jobs:
               throw "Creating the draft GitHub release failed."
             }
             $release = Get-Release
+            if ($null -eq $release) {
+              throw "Created GitHub draft release $tag could not be found."
+            }
           }
 
+          if ($null -eq $release) {
+            throw "GitHub release $tag does not exist."
+          }
           if (-not [bool]$release.draft) {
             [void]@(Assert-ReleaseAssets -Release $release -AllowMissing $false)
             if (-not [bool]$release.immutable) {
@@ -763,13 +793,42 @@ jobs:
           }
 
           function Get-Release {
-            $json = @(
+            $result = @(
               & gh api "repos/$env:GH_REPO/releases/tags/$encodedTag" 2>&1
             )
-            if ($LASTEXITCODE -ne 0) {
-              throw "Reading staged release failed: $($json -join '`n')"
+            $exitCode = $LASTEXITCODE
+            $text = ($result -join "`n")
+            if ($exitCode -eq 0) {
+              return ($text | ConvertFrom-Json)
             }
-            ($json -join "`n") | ConvertFrom-Json
+            if ($text -notmatch "HTTP 404") {
+              throw "Reading staged release $tag failed: $text"
+            }
+
+            # The tag endpoint excludes drafts. Search every release page so
+            # the exact staged draft can be verified before publication.
+            $listResult = @(
+              & gh api --paginate --slurp `
+                "repos/$env:GH_REPO/releases?per_page=100" 2>&1
+            )
+            $listExitCode = $LASTEXITCODE
+            $listText = ($listResult -join "`n")
+            if ($listExitCode -ne 0) {
+              throw "Reading release list for $tag failed: $listText"
+            }
+            $pages = $listText | ConvertFrom-Json
+            $releaseCandidates = @(
+              $pages |
+                ForEach-Object { $_ } |
+                Where-Object { [string]$_.tag_name -ceq $tag }
+            )
+            if ($releaseCandidates.Count -gt 1) {
+              throw "Multiple GitHub releases found for exact tag $tag."
+            }
+            if ($releaseCandidates.Count -eq 1) {
+              return $releaseCandidates[0]
+            }
+            return $null
           }
 
           function Assert-ExactRelease {
@@ -798,6 +857,9 @@ jobs:
           }
 
           $release = Get-Release
+          if ($null -eq $release) {
+            throw "The staged GitHub release $tag does not exist."
+          }
           Assert-ExactRelease -Release $release
           if ([bool]$release.draft) {
             & gh release edit $tag --draft=false --latest --verify-tag

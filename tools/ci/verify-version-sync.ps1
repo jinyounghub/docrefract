@@ -214,6 +214,19 @@ foreach ($needle in @(
     }
 }
 
+foreach ($needle in @(
+    "gh api --paginate --slurp",
+    "Multiple GitHub releases found for exact tag"
+)) {
+    $count = [regex]::Matches(
+        $releaseWorkflow,
+        [regex]::Escape($needle)
+    ).Count
+    if ($count -ne 2) {
+        throw "Release workflow must use the draft lookup contract twice: $needle"
+    }
+}
+
 foreach ($script in @(
     "tools/ci/build-native-distribution.ps1",
     "tools/ci/verify-native-release-asset.ps1"
