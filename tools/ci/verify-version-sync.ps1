@@ -86,7 +86,7 @@ $checks = @(
     [pscustomobject]@{
         Path = "CHANGELOG.md"
         Needles = @(
-            "## [$version] - 2026-07-17",
+            "## [$version] - 2026-07-18",
             "[Unreleased]: https://github.com/jinyounghub/docrefract/compare/v$version...HEAD"
         )
     }
@@ -227,6 +227,17 @@ foreach ($script in @(
     ) {
         throw "$script must clear expected native smoke exit codes before returning."
     }
+}
+
+$nativeSbomBuilder = Read-RepositoryText `
+    -RelativePath "tools/ci/build-native-sbom.ps1"
+if (
+    $nativeSbomBuilder.IndexOf(
+        '$isWindows =',
+        [StringComparison]::OrdinalIgnoreCase
+    ) -ge 0
+) {
+    throw "Native SBOM assembly must not assign PowerShell's read-only IsWindows variable."
 }
 
 Write-Host "Versioned package, NuGet install, native assets, Action, demo, report, documentation, issue metadata, and SDK pin are synchronized at $version."

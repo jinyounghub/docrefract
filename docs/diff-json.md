@@ -9,7 +9,7 @@ The initial schema has this shape:
 {
   "schemaVersion": "1.0",
   "engine": {
-    "toolVersion": "0.2.0",
+    "toolVersion": "0.2.1",
     "beforeExtractor": "openxml-3.5.1",
     "afterExtractor": "openxml-3.5.1"
   },

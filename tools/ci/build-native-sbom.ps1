@@ -54,11 +54,11 @@ if (Test-Path -LiteralPath $output) {
     throw "Native SBOM output already exists: $output"
 }
 
-$isWindows = $RuntimeIdentifier.StartsWith(
+$isWindowsRuntime = $RuntimeIdentifier.StartsWith(
     "win-",
     [StringComparison]::Ordinal
 )
-$extension = if ($isWindows) { ".zip" } else { ".tar.gz" }
+$extension = if ($isWindowsRuntime) { ".zip" } else { ".tar.gz" }
 $rootName = "docrefract-$Version-$RuntimeIdentifier"
 $archiveName = "$rootName$extension"
 if ([IO.Path]::GetFileName($archive) -cne $archiveName) {
@@ -93,7 +93,7 @@ function Assert-SafeArchiveEntry {
 
 $extract = Join-Path $work "extract"
 New-Item -ItemType Directory -Path $extract -Force | Out-Null
-if ($isWindows) {
+if ($isWindowsRuntime) {
     if ($null -eq ("System.IO.Compression.ZipFile" -as [type])) {
         Add-Type -AssemblyName System.IO.Compression.FileSystem
     }
