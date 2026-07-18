@@ -12,7 +12,7 @@ body:
     id: version
     attributes:
       label: DocRefract version
-      placeholder: 0.2.3
+      placeholder: 0.2.4
     validations:
       required: true
   - type: input

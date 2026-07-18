@@ -19,8 +19,8 @@
 
     <Authors>DocRefract contributors</Authors>
     <Title>DocRefract - PDF and DOCX Document Regression CLI</Title>
-    <Description>Open-source semantic PDF and DOCX diff CLI for deterministic document regression testing in CI.</Description>
-    <PackageTags>pdf;docx;pdf-diff;docx-diff;document-diff;semantic-diff;document-testing;regression-testing;testing;cli;github-actions;openxml</PackageTags>
+    <Description>Compare PDF and DOCX/Word documents with deterministic semantic diffs for document regression testing in CI.</Description>
+    <PackageTags>pdf;docx;word;compare;comparison;pdf-diff;docx-diff;word-diff;document-diff;semantic-diff;pdf-comparison;docx-comparison;document-comparison;document-testing;regression-testing;testing;cli;ci;ci-cd;github-action;github-actions;openxml</PackageTags>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
