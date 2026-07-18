@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed
+
+- Resume an exact GitHub draft release by paginating authenticated releases because the tag endpoint excludes drafts.
+
 ## [0.2.3] - 2026-07-18
 
 ### Fixed
