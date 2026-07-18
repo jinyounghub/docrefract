@@ -387,19 +387,18 @@ jobs:
           -BundleDirectory release-artifact/bundle
           -Version ${{ needs.package.outputs.version }}
 
-      - name: Require immutable GitHub releases
+      # GITHUB_TOKEN cannot read the admin-only immutable-releases setting. The
+      # release runbook records an administrator check against this exact tag.
+      - name: Require administrator immutability attestation
         env:
-          GH_REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ github.token }}
+          ATTESTED_TAG: ${{ vars.IMMUTABLE_RELEASES_ATTESTED_TAG }}
         shell: pwsh
         run: |
-          $json = @(& gh api "repos/$env:GH_REPO/immutable-releases" 2>&1)
-          if ($LASTEXITCODE -ne 0) {
-            throw "Immutable releases must be enabled before publishing: $($json -join '`n')"
-          }
-          $setting = ($json -join "`n") | ConvertFrom-Json
-          if (-not [bool]$setting.enabled) {
-            throw "Immutable releases must be enabled before publishing."
+          if ($env:ATTESTED_TAG -cne $env:GITHUB_REF_NAME) {
+            throw (
+              "Repository immutable releases must be administrator-verified " +
+              "for exact tag $env:GITHUB_REF_NAME before staging."
+            )
           }
 
       - name: Create or resume exact draft release
@@ -547,6 +546,9 @@ jobs:
 
           if (-not [bool]$release.draft) {
             [void]@(Assert-ReleaseAssets -Release $release -AllowMissing $false)
+            if (-not [bool]$release.immutable) {
+              throw "Existing public GitHub release is not immutable."
+            }
             "already-published=true" >> $env:GITHUB_OUTPUT
             exit 0
           }
@@ -811,5 +813,19 @@ jobs:
           Assert-ExactRelease -Release $published
           if (-not [bool]$published.immutable) {
             throw "Published GitHub release is not immutable."
+          }
+
+          $latestJson = @(
+            & gh api "repos/$env:GH_REPO/releases/latest" 2>&1
+          )
+          if ($LASTEXITCODE -ne 0) {
+            throw "Reading the latest GitHub release failed: $($latestJson -join '`n')"
+          }
+          $latest = ($latestJson -join "`n") | ConvertFrom-Json
+          if (
+            [string]$latest.id -cne [string]$published.id -or
+            [string]$latest.tag_name -cne $tag
+          ) {
+            throw "Published GitHub release $tag is not the latest release."
           }
           Write-Host "Published immutable exact 16-asset GitHub release $tag."

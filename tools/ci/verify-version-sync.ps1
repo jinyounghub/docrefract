@@ -206,7 +206,7 @@ if (
 $releaseWorkflow = Read-RepositoryText -RelativePath ".github/workflows/release.yml"
 foreach ($needle in @(
     "./tools/ci/normalize-nupkg.ps1",
-    'repos/$env:GH_REPO/immutable-releases',
+    "IMMUTABLE_RELEASES_ATTESTED_TAG",
     "Published GitHub release is not immutable."
 )) {
     if ($releaseWorkflow.IndexOf($needle, [StringComparison]::Ordinal) -lt 0) {
