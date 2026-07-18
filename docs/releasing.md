@@ -1,8 +1,10 @@
 # Release runbook
 
 DocRefract releases are fail-closed around version synchronization, native
-archives, SPDX SBOMs, checksums, NuGet trusted publishing, and GitHub release
-immutability. Run these steps from an administrator-authenticated `gh` session.
+archives, SPDX SBOMs, checksums, and NuGet trusted publishing. GitHub release
+immutability is administrator-attested for the exact tag before staging and
+asserted again after publication. Run these steps from an
+administrator-authenticated `gh` session.
 
 ## Before creating a tag
 
@@ -28,6 +30,9 @@ immutability. Run these steps from an administrator-authenticated `gh` session.
      --repo jinyounghub/docrefract `
      --body $tag
    ```
+
+   Set this variable immediately before pushing the tag, and do not change the
+   immutable-releases setting until the workflow finishes.
 
 4. Confirm that the `nuget` environment allows only `v*` tags and contains the
    `NUGET_USER` secret expected by `NuGet/login` trusted publishing.

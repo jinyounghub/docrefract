@@ -11,7 +11,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Fixed
 
-- Replace the inaccessible Actions-token immutable-release API preflight with a fail-closed administrator attestation scoped to the exact release tag.
+- Replace the inaccessible Actions-token immutable-release API preflight with an administrator attestation scoped to the exact release tag, followed by a post-publication immutability assertion.
 - Add a maintainer runbook for immutable GitHub Releases, NuGet OIDC, Marketplace staging, and post-publication verification.
 
 ## [0.2.2] - 2026-07-18
