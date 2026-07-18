@@ -125,14 +125,14 @@ $deps = $depsJson | ConvertFrom-Json
 $expectedInternalProjects = @("docrefract", "DocRefract.Core")
 foreach ($internalName in $expectedInternalProjects) {
     $expectedIdentity = "$internalName/$Version"
-    $matches = @(
+    $projectMatches = @(
         $deps.libraries.PSObject.Properties |
             Where-Object {
                 $_.Name -ceq $expectedIdentity -and
                 $_.Value.type -eq "project"
             }
     )
-    if ($matches.Count -ne 1) {
+    if ($projectMatches.Count -ne 1) {
         throw "Packaged dependency graph must contain project $expectedIdentity exactly once."
     }
 }
@@ -155,7 +155,7 @@ if ($expectedRuntimePackages.Count -eq 0) {
 }
 
 foreach ($expected in $expectedRuntimePackages) {
-    $matches = @(
+    $packageMatches = @(
         $sbom.packages |
             Where-Object {
                 $_.name -eq $expected.Name -and
@@ -164,14 +164,14 @@ foreach ($expected in $expectedRuntimePackages) {
     )
     $expectedPurl = "pkg:nuget/$([Uri]::EscapeDataString($expected.Name))@$([Uri]::EscapeDataString($expected.Version))"
     $purlMatches = @(
-        $matches.externalRefs |
+        $packageMatches.externalRefs |
             Where-Object {
                 $null -ne $_ -and
                 $_.referenceType -eq "purl" -and
                 $_.referenceLocator -eq $expectedPurl
             }
     )
-    if ($matches.Count -eq 0 -or $purlMatches.Count -eq 0) {
+    if ($packageMatches.Count -eq 0 -or $purlMatches.Count -eq 0) {
         throw "SBOM is missing packaged dependency $($expected.Name) $($expected.Version)."
     }
 }

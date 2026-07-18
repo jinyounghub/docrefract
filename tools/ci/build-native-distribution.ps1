@@ -135,18 +135,18 @@ function New-DeterministicZip {
                     [IO.Compression.CompressionLevel]::Optimal
                 )
                 $entry.LastWriteTime = $fixedTimestamp
-                $input = [IO.File]::OpenRead($item.FullName)
+                $sourceStream = [IO.File]::OpenRead($item.FullName)
                 try {
                     $entryStream = $entry.Open()
                     try {
-                        $input.CopyTo($entryStream)
+                        $sourceStream.CopyTo($entryStream)
                     }
                     finally {
                         $entryStream.Dispose()
                     }
                 }
                 finally {
-                    $input.Dispose()
+                    $sourceStream.Dispose()
                 }
             }
         }
