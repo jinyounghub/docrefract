@@ -54,6 +54,8 @@ jobs:
           $assets = "artifacts/site/assets"
           New-Item -ItemType Directory -Path $assets -Force | Out-Null
           Copy-Item -LiteralPath "docs/site/index.html" -Destination "artifacts/site/index.html"
+          Copy-Item -LiteralPath "docs/site/sitemap.xml" -Destination "artifacts/site/sitemap.xml"
+          Copy-Item -LiteralPath "docs/site/47097ce915504765a682bf02229d4fd3.txt" -Destination "artifacts/site/47097ce915504765a682bf02229d4fd3.txt"
           Copy-Item -LiteralPath "docs/assets/report-preview.png" -Destination $assets
           Copy-Item -LiteralPath "docs/assets/docrefract-icon.png" -Destination $assets
           Copy-Item -LiteralPath "docs/assets/social-preview.png" -Destination $assets
@@ -63,6 +65,8 @@ jobs:
         run: |
           $required = @(
             "index.html",
+            "sitemap.xml",
+            "47097ce915504765a682bf02229d4fd3.txt",
             "assets/report-preview.png",
             "assets/docrefract-icon.png",
             "assets/social-preview.png",
@@ -99,3 +103,66 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+
+  notify-indexnow:
+    name: Notify search engines
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions: {}
+
+    steps:
+      - name: Submit updated Pages URLs to IndexNow
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $siteUrl = "https://jinyounghub.github.io/docrefract/"
+          $key = "47097ce915504765a682bf02229d4fd3"
+          $keyLocation = "${siteUrl}${key}.txt"
+          $payload = @{
+            host = "jinyounghub.github.io"
+            key = $key
+            keyLocation = $keyLocation
+            urlList = @(
+              $siteUrl
+              "${siteUrl}report/"
+            )
+          } | ConvertTo-Json
+
+          for ($attempt = 1; $attempt -le 5; $attempt++) {
+            try {
+              $keyResponse = Invoke-WebRequest -Uri $keyLocation -UseBasicParsing
+              if ($keyResponse.Content.Trim() -ne $key) {
+                throw "The deployed IndexNow key did not match."
+              }
+              break
+            }
+            catch {
+              if ($attempt -eq 5) { throw }
+              Write-Warning "IndexNow key is not available yet (attempt $attempt/5)."
+              Start-Sleep -Seconds 5
+            }
+          }
+
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            try {
+              $response = Invoke-WebRequest `
+                -Uri "https://api.indexnow.org/indexnow" `
+                -Method Post `
+                -ContentType "application/json; charset=utf-8" `
+                -Body $payload `
+                -UseBasicParsing
+
+              if ([int]$response.StatusCode -notin 200, 202) {
+                throw "IndexNow returned HTTP $($response.StatusCode)."
+              }
+              Write-Host "IndexNow accepted the updated URLs with HTTP $($response.StatusCode)."
+              break
+            }
+            catch {
+              if ($attempt -eq 3) { throw }
+              Write-Warning "IndexNow submission failed (attempt $attempt/3): $($_.Exception.Message)"
+              Start-Sleep -Seconds (10 * $attempt)
+            }
+          }
