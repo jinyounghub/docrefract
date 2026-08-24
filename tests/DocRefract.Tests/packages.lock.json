@@ -71,8 +71,8 @@
       },
       "PdfPig": {
         "type": "Transitive",
-        "resolved": "0.1.15",
-        "contentHash": "Bf0NO4o2ZSVnemMyj21KDU1sfSgmamFC0pD4aAv19CDNXQsoO1Z6O99gNqpiK/XWWZ5d5i7JkQoT7PUBxEPz5g=="
+        "resolved": "0.1.16",
+        "contentHash": "qQcbsNMYVY+K5ELptax2S8thNMk0+rSQq3H/KdYj3LLcko8yTCz8y5KIvsKxIyAuTN0ZYNnfsZkM+0EvxTwHVA=="
       },
       "System.IO.Packaging": {
         "type": "Transitive",
@@ -123,7 +123,7 @@
         "type": "Project",
         "dependencies": {
           "DocumentFormat.OpenXml": "[3.5.1, )",
-          "PdfPig": "[0.1.15, )"
+          "PdfPig": "[0.1.16, )"
         }
       },
       "DocRefract.Tool": {

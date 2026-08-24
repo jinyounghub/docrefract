@@ -47,7 +47,7 @@ internal sealed class PdfDocumentExtractor : IDocumentExtractor
             {
                 Kind = DocumentKind.Pdf,
                 SourceHash = ExtractionUtilities.ComputeSha256(path),
-                Extractor = "pdfpig-0.1.15",
+                Extractor = "pdfpig-0.1.16",
                 Nodes = nodes.Items,
                 Warnings = warnings.ToArray(),
             };

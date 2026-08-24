@@ -10,7 +10,7 @@ materials under `licenses/`:
 | --- | --- | --- | --- |
 | [.NET / System.IO.Packaging](https://github.com/dotnet/runtime) | 10.0.2 | OPC package support | `dotnet-runtime-LICENSE.txt`, `System.IO.Packaging-THIRD-PARTY-NOTICES.txt` |
 | [DocumentFormat.OpenXml](https://github.com/dotnet/Open-XML-SDK) | 3.5.1 | DOCX/OOXML parsing | `Open-XML-SDK-LICENSE.txt` |
-| [PdfPig](https://github.com/UglyToad/PdfPig) | 0.1.15 | PDF semantic extraction | `PdfPig-LICENSE.txt` (including upstream PDFBox, Adobe AFM, and CMap notices) |
+| [PdfPig](https://github.com/UglyToad/PdfPig) | 0.1.16 | PDF semantic extraction | `PdfPig-LICENSE.txt` (including upstream PDFBox, Adobe AFM, and CMap notices) |
 
 Test-only dependencies include xUnit.net, Microsoft.NET.Test.Sdk, and
 coverlet.collector. Their package metadata and license files remain the
