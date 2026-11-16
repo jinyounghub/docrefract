@@ -36,7 +36,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.404
           cache: true
           cache-dependency-path: |
             **/packages.lock.json
@@ -216,7 +216,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.404
           cache: true
           cache-dependency-path: |
             **/packages.lock.json
@@ -630,7 +630,7 @@ jobs:
       - name: Set up exact .NET SDK
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.404
 
       - name: Check for an existing NuGet.org package
         id: nuget-state

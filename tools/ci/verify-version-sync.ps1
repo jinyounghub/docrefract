@@ -74,7 +74,7 @@ $checks = @(
         Needles = @(
             "description: Compare PDF/DOCX documents in deterministic regression tests and upload semantic diff reports.",
             "default: $version",
-            "dotnet-version: 10.0.302"
+            "dotnet-version: 10.0.404"
         )
     },
     [pscustomobject]@{
@@ -172,8 +172,8 @@ foreach ($requiredTag in @(
 }
 
 $sdk = Read-RepositoryText -RelativePath "global.json" | ConvertFrom-Json
-if ([string]$sdk.sdk.version -cne "10.0.302") {
-    throw "global.json must pin SDK 10.0.302."
+if ([string]$sdk.sdk.version -cne "10.0.404") {
+    throw "global.json must pin SDK 10.0.404."
 }
 if ([string]$sdk.sdk.rollForward -cne "disable") {
     throw "global.json must disable SDK roll-forward."
@@ -189,11 +189,11 @@ foreach ($workflow in @(
     $workflowContent = Read-RepositoryText -RelativePath $workflow
     if (
         $workflowContent.IndexOf(
-            "dotnet-version: 10.0.302",
+            "dotnet-version: 10.0.404",
             [StringComparison]::Ordinal
         ) -lt 0
     ) {
-        throw "$workflow must pin actions/setup-dotnet to SDK 10.0.302."
+        throw "$workflow must pin actions/setup-dotnet to SDK 10.0.404."
     }
 }
 
